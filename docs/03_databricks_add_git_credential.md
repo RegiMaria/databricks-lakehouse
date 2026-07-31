@@ -1,18 +1,30 @@
 ## Databricks Add Git credential
-1.No Workspace
+1. No Workspace
 
-- No workspace: Workspace -> Repos (ou Git folders) → Add Repo (ou o botão "+" → "Create Git folder", dependendo da versão da UI)
+- Workspace
+- → Repos (ou Git folders)
+- → Add Repo (ou o botão "+" → "Create Git folder", dependendo da versão da UI)
 - Cole a URL do repositório: https://github.com/<seu-usuario>/databricks-lakehouse.git
 - Selecione o provider: GitHub
 - Confirme o nome da pasta no workspace
-[ imagem 03 aqui]
+  
+---
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/5a121703-960a-49b3-9429-db6466cce5f0" width="650"/>
+</div>
+
+---
 
 Isso faz um clone do repositório dentro do Databricks.
 A partir daí, tudo que você criar/editar nos notebooks aparece no painel de Git do Databricks,
 pronto pra commitar e dar push direto de lá.
 
 2. Databricks
-Na hora de empurrar mudanças (commit/push) de dentro do Databricks pro GitHub, será exigido autenticação, é exatamente pra isso que o token serve.
+   
+Na hora de empurrar mudanças (commit/push) de dentro do Databricks pro GitHub,
+será exigido autenticação, é exatamente pra isso que o token serve.
+
 Vamos colar esse token na Databricks agora
 
 - Seu nome de perfil (lado esquerdo superior)
@@ -23,8 +35,15 @@ Vamos colar esse token na Databricks agora
 - Authentication: Personal access token
 - Cole o token que você gerou.
 
+---
 
-[imagem 04]
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/065cb4ac-2791-4b53-a177-12cc627b0b69" width="850"/>
+</div>
+
+---
+
+
 
 Resumo:
 | Campo                     | Valor                                                                                            |
@@ -37,15 +56,18 @@ Resumo:
 
 ---
 
+
 3. Personal Access Token vs Link Git Account
 
 **Por que usar um Personal Access Token?**
+
 Embora o Databricks permita conectar a conta do GitHub via OAuth ("Link Git account"),
 neste projeto utilizamos um Fine-grained Personal Access Token. Esse método permite
 conceder apenas as permissões necessárias ao repositório, seguindo o princípio do menor privilégio,
 além de ser amplamente compatível com ambientes corporativos.
 
 **E o Link Git Account?**
+
 Essa opção usa OAuth ("Entrar com GitHub"). É mais rápida e conveniente para uso pessoal, mas:
 
 - a gente não controla as permissões com a mesma granularidade;
