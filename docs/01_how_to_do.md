@@ -18,7 +18,7 @@ você precisa configurar as credenciais Git no Databricks (uma vez só, vale pra
 - Settings → Developer/Linked accounts → Git integration → escolher GitHub → colar um Personal Access Token
 (gerado no GitHub em Settings → Developer settings → Personal access tokens, com permissão repo).
 
-> Consulte a documentação github-token para gerar o Personal Access Token.
+> Consulte a documentação 01-github-token para gerar o Personal Access Token.
 
 **3. Só depois conectar no Databricks**
 - No workspace: Workspace -> Repos (ou Git folders) → Add Repo (ou o botão "+" → "Git folder", dependendo da versão da UI)
@@ -28,3 +28,5 @@ você precisa configurar as credenciais Git no Databricks (uma vez só, vale pra
 Isso faz um clone do repositório dentro do Databricks.
 A partir daí, tudo que você criar/editar nos notebooks aparece no painel de Git do Databricks,
 pronto pra commitar e dar push direto de lá.
+
+Veja essa passo a passo mais detalho em 03_databricks_add_git_credential
