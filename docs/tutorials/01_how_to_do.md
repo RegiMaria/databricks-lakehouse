@@ -1,4 +1,4 @@
-## Setup de ambiente
+## Sprint 1: Setup de ambiente + bronze
 
 **1. Criar o repositório no GitHub primeiro**
 - Vá em GitHub -->  New repository
@@ -47,18 +47,18 @@ Na Databricks, atualize o repositório:
 [ imagem 05]
 
 
-## Cria catálagos e schemas
+### Cria catálagos e schemas
 
-1. Crie uma nova branch
+**1. Crie uma nova branch**
 Sugestão `feature/setup-catalog-schemas`
 
-2. Crie um novo diretório
+**2. Crie um novo diretório**
 notebooks/
  Dentro dele
 - Crie um arquivo .py chamado `00_setup.py`
 - O `00_setup.py` cria atalog, schemas, volume
 
-3. Sobre volumes e tabelas
+**3. Sobre volumes e tabelas**
 
 ![Database objects in Databricks](https://docs.databricks.com/aws/en/assets/images/object-model-volume-d472dba24dca8002ff629cde896d4753.png)
 
@@ -102,7 +102,7 @@ Para saber mais:
 - O que é ACID
 [What is ACID?](https://www.databricks.com/blog/what-are-acid-transactions)
 
-4. Upload dos CSVs pro Volume
+**4. Upload dos CSVs pro Volume**
 
 No Databricks:
 - Catalog
@@ -116,7 +116,7 @@ Confirme que todos os 8 apareceram lá antes de seguir (issue #5 concluída)
 
 Antes de criamos o notebook de ingestão, vamos commitar o notebook  `00_setup.py`
 
-5. Commitando na Databricks
+**5. Commitando na Databricks**
 
 5.1. Com o notebook `notebooks/00_setup.py` já criado e salvo, olhe no canto superior do workspace (perto do nome do arquivo/pasta)
 tem um ícone de `branch/Git` mostrando algo como `feature/setup-catalog-schemas` com um número ao lado (indicando quantas mudanças pendentes).
@@ -129,7 +129,7 @@ No campo de mensagem de commit, escreva:
 
 `feat: cria catalog, schemas e volume via notebook versionado`
 
-5.2 - Clique no botão `Commit & Push`
+**5.2 - Clique no botão `Commit & Push`**
 
 Depois de commitar
 
@@ -143,7 +143,7 @@ No github:
 
 ANtes de seguirmos pra ingestão `01_bronze_ingestion.py`, vamos fazer uma Pull Requests.
 
-6. Criando Pull Requests
+**6. Criando Pull Requests**
 
 Dentro do Databricks, não existe Pull Requests.
 Merge de Pull Request é uma operação do GitHub, não do Databricks.
@@ -159,7 +159,7 @@ Já que seu push de `feature/setup-catalog-schemas` já está no GitHub, é só:
 5. Clique Create pull request
 6. Na tela seguinte, clique Merge pull request → Confirm merge
 
-7. Atualizar respoitório Databricks
+**7. Atualizar respoitório Databricks**
 
 Na Databricks: 
 1. Abra o Git folder do projeto (databricks-lakehouse) no Workspace
@@ -174,10 +174,78 @@ Depois do Pull, navegue pela pasta do projeto e confira se `notebooks/00_setup.p
 e se os arquivos de doc/scripts também apareceram.
 
 
-8. Criar o notebook `notebooks/01_bronze_ingestion.py`
+**8. Criar o notebook `notebooks/01_bronze_ingestion.py`**
 
-Dentro do seu Git folder no Databricks (mesma branch feature/setup-catalog-schemas,
-ou se preferir, pode abrir uma branch nova só pra ingestão, sua escolha), crie:
+Dentro do seu Git folder `Notebooks/` na Databricks (nova branch `feature/bronze-ingestion`), crie:
+
+- Notebook `01_bronze_ingestion.py`
+- Rode o notebook
+
+- Faça PR no github para sua `main` ou `develop`.
+- Na Databricks cria nova branch `docs/data_dictionary`.
+- Adiciona em `docs/data_dictionary.md`
+
+**9. Criar o dicionário de dados**
+- Adiciona em `docs/data_dictionary.md`
 
 
+**O que é um dicionário de dados**
 
+É um documento que descreve o que cada tabela e cada coluna significam, não o dado em si (os valores),
+mas o metadado: nome, tipo, o que representa, como se relaciona com outras tabelas.
+É, literalmente, um "dicionário" no sentido comum: você procura uma palavra (nome de coluna) e encontra a definição dela.
+
+No nosso caso: alguém abre `docs/data_dictionary.md` e descobre, sem precisar rodar nenhuma query,
+que `customer_unique_id` é diferente de `customer_id`, ou que `order_items` tem chave composta,
+informação que só é óbvia depois de estudar o dataset a fundo.
+
+**Por que isso importa (o problema que resolve)**
+
+Pense no cenário sem esse documento: você (ou qualquer outra pessoa) abre a tabela products daqui a 3 meses
+e vê uma coluna chamada product_name_lenght. Primeira reação: "isso é um erro de digitação meu?"
+Sem o dicionário, você perde tempo investigando, olhando o CSV original, sem saber se é bug seu
+ou característica da fonte. Com o dicionário, a resposta já está documentada: é um typo do dataset
+original, mantido de propósito.
+
+Outro exemplo real do nosso próprio documento: geolocation tem múltiplas linhas por CEP.
+Se alguém (você, sua colega) for fazer um JOIN com essa tabela sem saber disso,
+o resultado vai "explodir" (multiplicar linhas inesperadamente)
+e vai levar um tempo pra descobrir por quê.
+O dicionário avisa isso antes do problema acontecer.
+
+**Por que fizemos isso especificamente agora**
+
+Alinhando com o motivo original (issue #8, ainda na Sprint 1): a ideia é documentar a estrutura
+logo depois da ingestão Bronze, enquanto os dados ainda estão "crus", é o momento em que a gente
+mais precisa entender a fonte, antes de começar a limpar e transformar nas próximas sprints (Silver, Gold).
+Documentar cedo evita que decisões de limpeza sejam feitas no escuro.
+
+**No que ajuda, na prática**
+
+Serve de referência pra você mesma nas próximas sprints, quando for escrever o` 02_silver_transform.py`,
+você não precisa reabrir o CSV pra lembrar quais colunas existem e o que significam
+Documenta decisões de qualidade de dados antes de virar bug.a seção final ("observações de qualidade")
+já avisa coisas tipo "datas nulas em orders são esperadas, não é erro",isso evita que você (ou alguém revisando seu código)
+trate um caso normal como se fosse falha.
+
+**Portfólio/entrevista:**
+
+Pode mostrar que você entende o dado antes de programar em cima dele, é uma das diferenças entre "sei escrever PySpark"
+e "sei fazer engenharia de dados de verdade", que exige entender a fonte, não só a sintaxe.
+
+**Para Onboarding de terceiros**: 
+
+Se você trouxer um colaborador ou alguém clonar o repositório, esse documento é o primeiro lugar que explica "o que é esse dado", sem precisar te perguntar.
+
+### O que fizemos até agora
+
+✅ #1 Repositório criado
+✅ #2 Unity Catalog confirmado
+✅ #3 Git folder conectado
+✅ #4 Catalog/schemas/volume criados
+✅ #5 CSVs no Volume
+✅ #6 00_setup.py
+✅ #7 01_bronze_ingestion.py
+✅ #8 data_dictionary.md
+
+Pode comemorar! Vamos pra Sprint 2.
