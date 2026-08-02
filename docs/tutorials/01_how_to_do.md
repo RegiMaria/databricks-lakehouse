@@ -1,5 +1,8 @@
 ## Sprint 1: Setup de ambiente + bronze
 
+---
+**Objetivo**: ambiente funcionando e dados brutos como` Delta Table`, sem transformação.
+
 **1. Criar o repositório no GitHub primeiro**
 - Vá em GitHub -->  New repository
 - Nome: databricks-lakehouse (ou como preferir)
@@ -240,12 +243,46 @@ Se você trouxer um colaborador ou alguém clonar o repositório, esse documento
 ### O que fizemos até agora
 
 ✅ #1 Repositório criado
+
 ✅ #2 Unity Catalog confirmado
+
 ✅ #3 Git folder conectado
+
 ✅ #4 Catalog/schemas/volume criados
+
 ✅ #5 CSVs no Volume
+
 ✅ #6 00_setup.py
+
 ✅ #7 01_bronze_ingestion.py
+
 ✅ #8 data_dictionary.md
 
-Pode comemorar! Vamos pra Sprint 2.
+
+Pode comemorar! Vamos pra **Sprint 2.**
+
+## Sprint 2: Camada Silver
+
+---
+**Objetivo**: dados limpos, tipados, deduplicados, com upsert via `MERGE INTO`.
+
+- Na Databricks na branch `main` faça `Pull`.
+- Cria uma nova branch `feature/silver-transform`. Confirme que está na branch nova.
+- Adicione em `notebooks/notebooks/02_silver_transform`
+
+Nossa tarefa nessa Issue é:
+- `notebooks/02_silver_transform` com:
+- zero duplicatas confirmado com queries de validação
+- e as 5 colunas de data aparecem como `timestamp` no `DESCRIBE`
+
+**Resumo da lógica:**
+
+Bronze (dado bruto, tipos inferidos, duplicatas possíveis) 
+→ `dropDuplicates` por chave 
+→ `conversão de tipo` nas `datas` 
+→ filtro de **nulo SÓ em colunas que são obrigatórias de verdade **
+→ Silver (dado confiável, mas ainda sem lógica de negócio)
+
+**Próxima Issue:**
+
+- Limpeza de customers, products, sellers
