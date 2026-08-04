@@ -290,6 +290,8 @@ Bronze (dado bruto, tipos inferidos, duplicatas possíveis)
 ### Limpeza de customers, products e selles
 **Tabela customers**
 
+Vamos usar o mesmo notebook de `notebooks/02_silver_transform.ipynb`.
+
 Abra uma branch nova:
 `feature/silver-customers-products-sellers`
 
@@ -312,3 +314,53 @@ Agora vamos para tabela products
 
 ### Tabela products
 
+**2. Tabela products**
+
+O que faremos:
+
+Vamos ler a tabela `products` da camada Bronze, exatamente como veio da ingestão. Sem nenhuma limpeza ainda.
+Vamos realizar duas operações encadeadas:
+
+.dropDuplicates(["product_id"]) → remove linhas com product_id repetido, mantendo só uma ocorrência de cada produto
+
+.filter(col("`product_id`").isNotNull()) → descarta linhas onde `product_id` é nulo (produto sem identificador não é um registro válido)
+
+Salvaremos o resultado como tabela Delta em `olist_project.silver.products`, sobrescrevendo se já existir (idempotência).
+
+**Um ponto que vale destacar:**
+
+A estrutura do problema é a mesma: uma tabela de catálogo (produto, cliente, vendedor, todas são "tabelas de dimensão",
+no sentido do `star schema` que vamos montar na Sprint 3), onde a única coisa que precisa de garantia é:
+uma linha por chave, sem chave nula.
+
+Não tem coluna de `data` aqui, então a gente não precisa do loop de `to_timestamp` que usamos em `orders`.
+
+
+**Outro ponto que vale destacar sobre products especificamente:**
+
+Lembra que sobre `product_category_name`, ele poder ser `nulo` (problema conhecido do dataset)?
+Repare que não filtramos por essa coluna, só por `product_id`.
+
+Isso é proposital: um produto sem categoria ainda é um produto válido (é só um dado incompleto, não um erro estrutural).
+Se filtrássemos por `product_category_name`, perderíamos produtos legítimos só por falta de categorização,
+mesma lógica que aplicamos com as datas de orders, só que agora pra outra coluna "opcional".
+
+**O que você deve esperar do print**
+
+Deve sair algo como:
+
+`products_silver: 32951 linhas`
+
+Esse número é menor que o de customers (99441) porque no Olist há muito menos produtos únicos do que pedidos/clientes,
+cada produto pode ser vendido em múltiplos pedidos diferentes.
+
+### Tabela sellers
+
+**Tabela sellers:**
+
+O que faremos:
+- Lê sellers da Bronze
+- Remover duplicatas por seller_id (garante chave única)
+- Descartar linhas com seller_id nulo (dado inválido)
+- Salvar como Delta em olist_project.silver.sellers, sobrescrevendo se já existir
+- Imprimir a contagem final como confirmação
