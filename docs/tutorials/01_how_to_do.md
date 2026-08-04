@@ -286,3 +286,135 @@ Bronze (dado bruto, tipos inferidos, duplicatas possíveis)
 **Próxima Issue:**
 
 - Limpeza de customers, products, sellers
+
+### Limpeza de customers, products e selles
+**Tabela customers**
+
+Vamos usar o mesmo notebook de `notebooks/02_silver_transform.ipynb`.
+
+Abra uma branch nova:
+`feature/silver-customers-products-sellers`
+
+Primeira parte do código / primeira célula
+
+**1.Tabela customers**
+
+Pegaremos a tabela `customers` da camada Bronze (como veio, sem tratamento),
+removemos linhas com `customer_id` duplicado, descartamos linhas sem `customer_id` (dado inválido),
+e salvamos o resultado como uma nova tabela `Delta` na camada Silver. O print final serve só pra confirmar visualmente quantas linhas sobreviveram depois da limpeza.
+
+Ponto de atenção:
+`.write.format("delta")` → salva no formato Delta Lake, não CSV/Parquet puro
+`.mode("overwrite")` → substitui a tabela inteira se ela já existir, em vez de duplicar, é o que torna o notebook [idempotente](https://www.freecodecamp.org/news/idempotence-explained/) (rodar várias vezes dá o mesmo resultado)
+`.saveAsTable("olist_project.silver.customers")` → registra oficialmente no[ Unity Catalog](https://docs.databricks.com/aws/en/data-governance/unity-catalog/), dentro do schema silver
+
+Faça o commit: `feat: limpeza de customers`
+
+Agora vamos para tabela products
+
+### Tabela products
+
+**2. Tabela products**
+
+O que faremos:
+
+Vamos ler a tabela `products` da camada Bronze, exatamente como veio da ingestão. Sem nenhuma limpeza ainda.
+Vamos realizar duas operações encadeadas:
+
+.dropDuplicates(["product_id"]) → remove linhas com product_id repetido, mantendo só uma ocorrência de cada produto
+
+.filter(col("`product_id`").isNotNull()) → descarta linhas onde `product_id` é nulo (produto sem identificador não é um registro válido)
+
+Salvaremos o resultado como tabela Delta em `olist_project.silver.products`, sobrescrevendo se já existir (idempotência).
+
+**Um ponto que vale destacar:**
+
+A estrutura do problema é a mesma: uma tabela de catálogo (produto, cliente, vendedor, todas são "tabelas de dimensão",
+no sentido do `star schema` que vamos montar na Sprint 3), onde a única coisa que precisa de garantia é:
+uma linha por chave, sem chave nula.
+
+Não tem coluna de `data` aqui, então a gente não precisa do loop de `to_timestamp` que usamos em `orders`.
+
+
+**Outro ponto que vale destacar sobre products especificamente:**
+
+Lembra que sobre `product_category_name`, ele poder ser `nulo` (problema conhecido do dataset)?
+Repare que não filtramos por essa coluna, só por `product_id`.
+
+Isso é proposital: um produto sem categoria ainda é um produto válido (é só um dado incompleto, não um erro estrutural).
+Se filtrássemos por `product_category_name`, perderíamos produtos legítimos só por falta de categorização,
+mesma lógica que aplicamos com as datas de orders, só que agora pra outra coluna "opcional".
+
+**O que você deve esperar do print**
+
+Deve sair algo como:
+
+`products_silver: 32951 linhas`
+
+Esse número é menor que o de customers (99441) porque no Olist há muito menos produtos únicos do que pedidos/clientes,
+cada produto pode ser vendido em múltiplos pedidos diferentes.
+
+### Tabela sellers
+
+**Tabela sellers:**
+
+O que faremos:
+- Lê sellers da Bronze
+- Remover duplicatas por seller_id (garante chave única)
+- Descartar linhas com seller_id nulo (dado inválido)
+- Salvar como Delta em olist_project.silver.sellers, sobrescrevendo se já existir
+- Imprimir a contagem final como confirmação
+
+**Um ponto a destacar:**
+
+De acordo com nosso dicionário de dados, `sellers` só tem 4 colunas no total (seller_id, CEP, cidade, estado),
+nenhuma data, nenhum campo "opcional" com nulos esperados tipo o `product_category_name`.
+É a tabela de dimensão mais direta de limpar: só garantir chave única e não-nula, ponto final.
+
+**O que esperar do print**
+
+No dataset Olist, o número de vendedores costuma ser bem menor que produtos ou clientes algo na casa de ~3000.
+Se sair um número muito diferente disso (tipo próximo de 99441, igual customers),
+vale desconfiar que algo foi copiado/colado errado da célula anterior.
+
+### Query de validação
+
+O que essa query faz
+
+Ela roda a mesma checagem de duplicata três vezes (uma por tabela) e junta os resultados numa lista só, usando UNION ALL.
+
+```sql
+SELECT 'customers' as tabela, customer_id as chave, COUNT(*) as qtd
+FROM olist_project.silver.customers
+GROUP BY customer_id
+HAVING COUNT(*) > 1
+```
+
+Isso agrupa a tabela customers por `customer_id` e só mantém os grupos que têm mais de 1 linha (HAVING COUNT(*) > 1),
+ou seja, só aparece aqui se existir uma duplicata de verdade. A coluna 'customers' (texto fixo)
+serve só pra identificar de qual tabela veio aquela linha no resultado final.
+
+```sql
+sql
+UNION ALL
+SELECT 'products', product_id, COUNT(*)
+FROM olist_project.silver.products GROUP BY product_id HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'sellers', seller_id, COUNT(*)
+FROM olist_project.silver.sellers GROUP BY seller_id HAVING COUNT(*) > 1
+```
+UNION ALL empilha os resultados das três consultas, uma embaixo da outra, num resultado único.
+
+**Como interpretar o resultado**
+
+Se a query não retornar nenhuma linha (resultado vazio) → ótimo,
+significa que nenhuma das três tabelas tem chave duplicada. 
+ o resultado esperado, e é o que confirma o critério de aceite da issue #10.
+
+Se aparecer alguma linha → tipo customers | abc123 | 2
+significaria que sobrou uma duplicata em customers pro customer_id "abc123",
+o que indicaria que algo deu errado na limpeza (não deveria acontecer,
+já que rodamos dropDuplicates antes).
+
+Em vez de rodar 3 células de validação separadas (uma por tabela),
+essa junta tudo numa consulta só, mais rápida de ler o resultado de uma vez.
