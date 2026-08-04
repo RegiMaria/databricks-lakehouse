@@ -364,3 +364,17 @@ O que faremos:
 - Descartar linhas com seller_id nulo (dado inválido)
 - Salvar como Delta em olist_project.silver.sellers, sobrescrevendo se já existir
 - Imprimir a contagem final como confirmação
+
+**Um ponto a destacar:**
+
+De acordo com nosso dicionário de dados, `sellers` só tem 4 colunas no total (seller_id, CEP, cidade, estado),
+nenhuma data, nenhum campo "opcional" com nulos esperados tipo o `product_category_name`.
+É a tabela de dimensão mais direta de limpar: só garantir chave única e não-nula, ponto final.
+
+**O que esperar do print**
+
+No dataset Olist, o número de vendedores costuma ser bem menor que produtos ou clientes algo na casa de ~3000.
+Se sair um número muito diferente disso (tipo próximo de 99441, igual customers),
+vale desconfiar que algo foi copiado/colado errado da célula anterior.
+
+### Query de validação
