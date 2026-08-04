@@ -378,3 +378,43 @@ Se sair um número muito diferente disso (tipo próximo de 99441, igual customer
 vale desconfiar que algo foi copiado/colado errado da célula anterior.
 
 ### Query de validação
+
+O que essa query faz
+
+Ela roda a mesma checagem de duplicata três vezes (uma por tabela) e junta os resultados numa lista só, usando UNION ALL.
+
+```sql
+SELECT 'customers' as tabela, customer_id as chave, COUNT(*) as qtd
+FROM olist_project.silver.customers
+GROUP BY customer_id
+HAVING COUNT(*) > 1
+```
+
+Isso agrupa a tabela customers por `customer_id` e só mantém os grupos que têm mais de 1 linha (HAVING COUNT(*) > 1),
+ou seja, só aparece aqui se existir uma duplicata de verdade. A coluna 'customers' (texto fixo)
+serve só pra identificar de qual tabela veio aquela linha no resultado final.
+
+```sql
+sql
+UNION ALL
+SELECT 'products', product_id, COUNT(*)
+FROM olist_project.silver.products GROUP BY product_id HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'sellers', seller_id, COUNT(*)
+FROM olist_project.silver.sellers GROUP BY seller_id HAVING COUNT(*) > 1
+```
+UNION ALL empilha os resultados das três consultas, uma embaixo da outra, num resultado único.
+
+**Como interpretar o resultado**
+
+Se a query não retornar nenhuma linha (resultado vazio) → ótimo,
+significa que nenhuma das três tabelas tem chave duplicada. 
+ o resultado esperado, e é o que confirma o critério de aceite da issue #10.
+
+Se aparecer alguma linha → tipo customers | abc123 | 2
+significaria que sobrou uma duplicata em customers pro customer_id "abc123",
+o que indicaria que algo deu errado na limpeza (não deveria acontecer,
+já que rodamos dropDuplicates antes).
+
+Em vez de rodar 3 células de validação separadas (uma por tabela),
+essa junta tudo numa consulta só, mais rápida de ler o resultado de uma vez.
