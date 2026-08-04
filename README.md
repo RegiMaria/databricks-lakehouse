@@ -23,6 +23,18 @@ Este projeto segue a [Medallion Architecture](https://www.databricks.com/blog/wh
 | 🥈 **Silver** | Dados limpos, tipados, deduplicados e atualizados com **`MERGE INTO`** (upserts). |
 | 🥇 **Gold** | Modelo dimensional (**Star Schema**), pronto para BI, dashboards e análises. |
 
+<p align="center">
+  <img src="https://www.databricks.com/sites/default/files/inline-images/building-data-pipelines-with-delta-lake-120823.png"
+       alt="Medallion Architecture"
+       width="700">
+  <br>
+  <sub>
+    Fonte:
+    <a href="https://www.databricks.com/blog/what-is-medallion-architecture">
+      Databricks – What is Medallion Architecture?
+    </a>
+  </sub>
+</p>
 
 ## Tecnologias
 
