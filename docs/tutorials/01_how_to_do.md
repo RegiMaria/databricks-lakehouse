@@ -286,3 +286,29 @@ Bronze (dado bruto, tipos inferidos, duplicatas possíveis)
 **Próxima Issue:**
 
 - Limpeza de customers, products, sellers
+
+### Limpeza de customers, products e selles
+**Tabela customers**
+
+Abra uma branch nova:
+`feature/silver-customers-products-sellers`
+
+Primeira parte do código / primeira célula
+
+**1.Tabela customers**
+
+Pegaremos a tabela `customers` da camada Bronze (como veio, sem tratamento),
+removemos linhas com `customer_id` duplicado, descartamos linhas sem `customer_id` (dado inválido),
+e salvamos o resultado como uma nova tabela `Delta` na camada Silver. O print final serve só pra confirmar visualmente quantas linhas sobreviveram depois da limpeza.
+
+Ponto de atenção:
+`.write.format("delta")` → salva no formato Delta Lake, não CSV/Parquet puro
+`.mode("overwrite")` → substitui a tabela inteira se ela já existir, em vez de duplicar, é o que torna o notebook [idempotente](https://www.freecodecamp.org/news/idempotence-explained/) (rodar várias vezes dá o mesmo resultado)
+`.saveAsTable("olist_project.silver.customers")` → registra oficialmente no[ Unity Catalog](https://docs.databricks.com/aws/en/data-governance/unity-catalog/), dentro do schema silver
+
+Faça o commit: `feat: limpeza de customers`
+
+Agora vamos para tabela products
+
+### Tabela products
+
