@@ -99,26 +99,39 @@ Relacionamento central: orders → order_items → products/sellers, e orders �
 Detalhamento completo em [docs/data_dictionary.md](https://github.com/RegiMaria/databricks-lakehouse/blob/main/docs/tutorials/04_data_dictionary.md).
 
 ## Estrutura do repositório
-```
+
+```text
 olist-lakehouse/
 ├── .github/
 │   └── workflows/
-│       └── lint.yml                ← Sprint 7, CI com flake8
+│       └── lint.yml                     ← Sprint 7, CI com GitHub Actions
 ├── notebooks/
 │   ├── 00_setup.py
 │   ├── 01_bronze_ingestion.py
 │   ├── 02_silver_transform.py
 │   ├── 03_gold_aggregation.py
 │   ├── 04_time_travel_demo.py
-│   └── bonus_ldp_pipeline/        ← Sprint 6 (bônus), Lakeflow Declarative Pipelines
-├── data/raw/                       (amostra pequena, ou apenas instruções de download)
+│   └── bonus_ldp_pipeline/              ← Sprint 6 (bônus), Lakeflow Declarative Pipelines
+├── data/
+│   └── raw/                             ← Amostra do dataset ou instruções de download
 ├── docs/
-│   ├── data_dictionary.md
+│   ├── tutorials/
+│   │   ├── 01_how_to_do.md
+│   │   ├── 02_github_token.md
+│   │   ├── 03_databricks_add_git_credential.md
+│   │   └── 04_data_dictionary.md
+│   ├── roadmap/
+│   │   ├── sprint_01.md
+│   │   ├── sprint_02.md
+│   │   ├── sprint_03.md
+│   │   ├── sprint_04.md
+│   │   ├── sprint_05.md
+│   │   ├── sprint_06.md
+│   │   └── sprint_07.md
 │   └── star_schema.md
-│   └── how to do
-├── screenshots/                    (lineage graph, job runs, dashboard)
-├── requirements-dev.txt            ← Sprint 7
-├── .flake8                         ← Sprint 7
+├── screenshots/                         ← Lineage, Jobs, Dashboards e evidências
+├── requirements-dev.txt                 ← Dependências de desenvolvimento
+├── .flake8                              ← Configuração do flake8
 ├── .gitignore
 └── README.md
 ```
@@ -149,10 +162,15 @@ olist-lakehouse/
 No Databricks: Workspace → Repos → Add Repo, conectar ao GitHub (permite commitar/pushar direto do notebook).
 
 Criação do catalog/schemas (Unity Catalog):
+
 CREATE CATALOG IF NOT EXISTS olist_project;
+
 CREATE SCHEMA IF NOT EXISTS olist_project.bronze;
+
 CREATE SCHEMA IF NOT EXISTS olist_project.silver;
+
 CREATE SCHEMA IF NOT EXISTS olist_project.gold;
+
 CREATE VOLUME IF NOT EXISTS olist_project.bronze.raw_files;
 
 Upload dos CSVs do Kaggle para o Volume via UI: Catalog → volume → Upload.
@@ -161,137 +179,11 @@ Upload dos CSVs do Kaggle para o Volume via UI: Catalog → volume → Upload.
 
 Projeto dividido em 5 sprints de 1 semana + 1 sprint bônus, organizadas como Issues/Milestones no GitHub.
 
+Consulte aqui `docs/roadmap`
 
-Sprint 1 - Setup + Bronze (Semana 1)
----
+## Como realizar esse projeto
 
-Objetivo: ambiente funcionando, dados brutos ingeridos como Delta Table sem transformação.
-
-[ ] #1 Criar repositório GitHub e estrutura de pastas
-
-[ ] #2 Configurar Databricks Free Edition (workspace, Unity Catalog)
-
-[ ] #3 Conectar Git folder ao GitHub
-
-[ ] #4 Criar catalog/schemas (bronze, silver, gold) e volume
-
-[ ] #5 Baixar dataset Olist e subir para o Volume
-
-[ ] #6 Notebook 00_setup.py
-
-[ ] #7 Notebook 01_bronze_ingestion.py - ingestão dos 9 CSVs como Delta
-
-[ ] #8 Documentar dicionário de dados ([docs/data_dictionary.md](https://github.com/RegiMaria/databricks-lakehouse/blob/main/docs/tutorials/04_data_dictionary.md))
-
-Critério de "pronto": 9 tabelas Delta visíveis em `olist_project.bronze`, README com seção de setup preenchida.
-
-
-Sprint 2 - Silver (Semana 2)
----
-
-Objetivo: dados limpos, tipados, deduplicados, com upsert via MERGE INTO.
-
-[ ] #9 Notebook 02_silver_transform.py — limpeza de orders
-
-[ ] #10 Limpeza de customers, products, sellers
-
-[ ] #11 Limpeza de order_items e order_payments
-
-[ ] #12 Simular carga incremental (novo batch) + MERGE INTO
-
-[ ] #13 Validação de qualidade: contagem de nulos, duplicatas antes/depois
-
-Critério de "pronto": todas as tabelas Silver populadas, zero duplicatas por chave primária, `MERGE INTO` documentado com output do `DESCRIBE HISTORY`.
-
-
-Sprint 3 - Gold + Modelagem Dimensional (Semana 3)
----
-
-Objetivo: star schema pronto para análise.
-
-[ ] #14 Modelar star schema em docs/star_schema.md (fato + dimensões)
-
-[ ] #15 Notebook 03_gold_aggregation.py — fact_orders
-
-[ ] #16 dim_customer, dim_product, dim_seller
-
-[ ] #17 Queries de métricas de negócio (vendas por estado/mês, ticket médio)
-
-Critério de "pronto": diagrama do star schema documentado, 3+ queries de negócio com resultado.
-
-Sprint 4 - Automação + Governança (Semana 4)
----
-
-Objetivo: pipeline orquestrado como Job de verdade, com manutenção e lineage.
-
-[ ] #18 Criar Job (Workflow) encadeando os notebooks Bronze → Silver → Gold
-
-[ ] #19 Agendar o Job (schedule/cron)
-
-[ ] #20 Rodar OPTIMIZE nas tabelas Silver/Gold
-
-[ ] #21 Rodar VACUUM e documentar retenção
-
-[ ] #22 Explorar e capturar prints do Lineage Graph no Unity Catalog
-
-
-- Job: Workspace → Jobs & Pipelines → Create Job → adicionar 3 tasks (Bronze, Silver, Gold) com dependência sequencial (Silver depende de Bronze, Gold depende de Silver).
-```
-OPTIMIZE olist_project.silver.orders;
-VACUUM olist_project.silver.orders RETAIN 168 HOURS; -- padrão 7 dias
-```
-- Lineage: depois de rodar o Job algumas vezes, ir em Catalog → tabela → aba Lineage e capturar o grafo bronze.orders → silver.orders → gold.fact_orders.
-  
-Critério de "pronto": Job rodando com sucesso (histórico de runs visível), lineage graph capturado, OPTIMIZE/VACUUM documentados.
-
-Sprint 5 - Time Travel + Dashboard + Documentação final (Semana 5)
----
-
-[ ] #23 Notebook 04_time_travel_demo.py — simular erro e recuperar
-
-[ ] #24 Criar dashboard no Databricks SQL (2-3 gráficos)
-
-[ ] #25 Finalizar README.md completo
-
-[ ] #26 Revisão geral do repositório e limpeza de notebooks
-
-[ ] #27 Publicar no LinkedIn / portfólio
-
-Critério de "pronto": incidente documentado com horário e comando de recuperação, dashboard publicado, README revisado.
-
-Sprint 6 (Bônus, opcional) - Lakeflow Declarative Pipelines
----
-
-Objetivo: recriar a camada Silver de orders usando o paradigma declarativo (o antigo Delta Live Tables) e comparar as duas abordagens.
-
-[ ] #28 Estudar tutorial oficial de Lakeflow Declarative Pipelines
-
-[ ] #29 Criar pipeline declarativo recriando orders_silver com @dp.materialized_view
-
-[ ] #30 Adicionar expectativas de qualidade com @dp.expect_or_drop
-
-[ ] #31 Rodar o pipeline e comparar com a versão imperativa
-
-[ ] #32 Escrever seção "Imperative vs Declarative" comparando as duas abordagens
-
-Critério de "pronto": pipeline declarativo rodando com sucesso, seção comparativa no README (menos código e qualidade de dados embutida no declarativo, vs. mais controle fino e valor didático no imperativo).
-
-Sprint 7 (Bônus, opcional) - CI enxuto com GitHub Actions
----
-
-Objetivo: a cada push/PR no GitHub, rodar automaticamente uma checagem de qualidade de código (lint) nos notebooks Python, sem fazer deploy no Databricks. Mostra domínio do conceito de CI (Integração Contínua) isoladamente do CD (Deploy).
-
-[ ] #33 Adicionar requirements-dev.txt com flake8
-
-[ ] #34 Criar .flake8 com regras compatíveis com notebooks Databricks
-
-[ ] #35 Criar workflow .github/workflows/lint.yml
-
-[ ] #36 Testar o Action com um push proposital com erro de lint
-
-[ ] #37 Adicionar badge de status do CI no README
-
-Critério de "pronto": Action rodando automaticamente em todo push/PR, com pelo menos um ciclo de falha→correção documentado (print ou link do PR), badge visível no topo do README.
+Consulte `docs/tutorials`
 
 ##  Documentação oficial de referência
 
