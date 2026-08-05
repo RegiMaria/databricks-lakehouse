@@ -1,10 +1,40 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/76642e1b-1c06-4f44-a25e-c610642dd4ef"
+  <img src="https://github.com/user-attachments/assets/2aba3fcf-da06-4f5c-99c3-83ff2fa455a1"
        alt="Databricks Lakehouse"
-       width="140">
+       width="200">
 </p>
 
 <h1 align="center">databricks-lakehouse</h1>
+
+<p align="center">
+  <a href="LINK_AWS_BADGE">
+    <img src="https://github.com/user-attachments/assets/c0f48f2b-44f4-4023-800f-f4d58eb896ca"
+         width="180"
+         alt="AWS Databricks Platform Architect">
+  </a>
+
+  <a href="LINK_AZURE_BADGE">
+    <img src="https://github.com/user-attachments/assets/7f72b57b-43b9-4f44-a9da-91767d967835"
+         width="180"
+         alt="Azure Databricks Platform Architect">
+  </a>
+
+  <a href="LINK_GCP_BADGE">
+    <img src="https://github.com/user-attachments/assets/f853ce8c-cae2-4dc5-a793-eaf85965cdd1"
+         width="180"
+         alt="GCP Databricks Platform Architect">
+  </a>
+</p>
+
+<p align="center">
+  <b>Databricks Platform Architect</b> • AWS • Azure • Google Cloud
+</p>
+
+<p align="center">
+  <a href="https://credentials.databricks.com/profile/regileneamodasilva957596/wallet" target="_blank">
+    ⭐ View all my Databricks Credentials
+  </a>
+</p>
 
 ## Databricks-Lakehouse
 
