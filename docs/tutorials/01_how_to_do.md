@@ -418,3 +418,169 @@ já que rodamos dropDuplicates antes).
 
 Em vez de rodar 3 células de validação separadas (uma por tabela),
 essa junta tudo numa consulta só, mais rápida de ler o resultado de uma vez.
+
+## Tabelas order_items e order_payments
+Até agora (orders, customers, products, sellers), cada tabela tinha uma chave primária simples (order_id, customer_id, etc.), uma coluna, um valor único por linha, certo?
+
+`order_items` e `order_payments` são diferentes: não têm chave primária de coluna única. Olhando o dicionário de dados:
+
+order_items → chave é a combinação de (order_id, order_item_id) — porque um pedido pode ter vários itens, então order_id sozinho se repete várias vezes de propósito (isso é esperado, não é duplicata "errada")
+order_payments → chave é a combinação de (order_id, payment_sequential) — porque um pedido pode ter vários pagamentos (ex: parcelado em cartão + voucher), então order_id também se repete de propósito.
+
+** Chave composta**
+
+Isso muda a lógica de `dedup`. Se a gente fizesse `dropDuplicates`(["order_id"]) aqui, do jeito que fizemos nas tabelas anteriores, destruiríamos o dado, apagaríamos itens/pagamentos legítimos só porque compartilham o mesmo `order_id`. O dedup precisa ser pela chave `composta inteira`, não só por order_id.
+
+O que vamos fazer:
+
+1. Ler `order_items` e order_payments da Bronze
+2. Fazer dedup pela chave composta, não coluna única
+3. Filtrar nulo em `order_id` (chave obrigatória em ambas)
+4. Escrever como Delta em `olist_project.silver`
+5. Validar FK: rodar um `anti-join` checando se existe algum `order_id` em `order_items/order_payments` que não existe em `silver.orders`
+
+Sugestão para nome da branch:
+```
+feature/silver-order-items-payments
+```
+
+Agoa vamos rodar o `notebook/02_silver_transform.py` com a lógica de 
+chave composta e a validação de FK.
+
+**02c - Silver Transform: order_items, order_payments**
+
+Diferente das tabelas anteriores, order_items e order_payments
+têm chave composta (não uma coluna única),` order_i`d se repete
+de propósito, pois um pedido pode ter múltiplos itens/pagamentos.
+
+## order_items
+
+```python   
+order_items_bronze = spark.table("olist_project.bronze.order_items")
+
+order_items_silver = (
+    order_items_bronze
+    .dropDuplicates(["order_id", "order_item_id"])
+    .filter(col("order_id").isNotNull())
+)
+
+(
+    order_items_silver.write.format("delta")
+    .mode("overwrite")
+    .saveAsTable("olist_project.silver.order_items")
+)
+
+print(f"order_items_silver: {order_items_silver.count()} linhas")
+
+```
+## order_payments
+
+```
+order_payments_bronze = spark.table("olist_project.bronze.order_payments")
+
+order_payments_silver = (
+    order_payments_bronze
+    .dropDuplicates(["order_id", "payment_sequential"])
+    .filter(col("order_id").isNotNull())
+)
+
+(
+    order_payments_silver.write.format("delta")
+    .mode("overwrite")
+    .saveAsTable("olist_project.silver.order_payments")
+)
+
+print(f"order_payments_silver: {order_payments_silver.count()} linhas")
+```
+## Validação
+```
+-- Critério de aceite: zero duplicatas pela chave composta
+SELECT order_id, order_item_id, COUNT(*) as qtd
+FROM olist_project.silver.order_items
+GROUP BY order_id, order_item_id
+HAVING COUNT(*) > 1;
+```
+
+```
+%sql
+ SELECT order_id, payment_sequential, COUNT(*) as qtd
+ FROM olist_project.silver.order_payments
+ GROUP BY order_id, payment_sequential
+ HAVING COUNT(*) > 1;
+
+```
+```
+-- Critério de aceite: FK order_id validada contra silver.orders
+-- Anti-join: encontra order_id em order_items que NÃO existe em orders
+SELECT oi.order_id
+FROM olist_project.silver.order_items oi
+LEFT ANTI JOIN olist_project.silver.orders o
+ON oi.order_id = o.order_id;
+
+```
+```
+-- Mesma checagem para order_payments
+SELECT op.order_id
+FROM olist_project.silver.order_payments op
+LEFT ANTI JOIN olist_project.silver.orders o
+ON op.order_id = o.order_id;
+```
+
+Faça o commit!
+
+Por que usamos `LEFT JOIN` + filtro no nosso caso
+
+Poderíamos ter escrito:
+
+```
+SELECT oi.order_id
+FROM order_items oi
+LEFT JOIN orders o ON oi.order_id = o.order_id
+WHERE o.order_id IS NULL;
+
+```
+
+O `LEFT JOIN` Retorna todas as linhas da esquerda, e preenche com NULL onde não achar correspondência na direita,certo?
+
+```
+SELECT * FROM order_items oi
+LEFT JOIN orders o ON oi.order_id = o.order_id;
+```
+
+Resultado: `A` (com dado de orders), `X` (com colunas de orders vindo NULL, porque não achou). Repare: isso traz as colunas de `orders` junto, mesmo quando **não existe correspondência**, você precisaria depois **filtrar** **manualmente**` WHERE o.order_id IS NULL` pra achar só os órfãos.
+
+LEFT ANTI JOIN - o que usamos
+
+Já faz o trabalho que a gente teria que fazer manualmente com `LEFT JOIN + WHERE ... IS NULL`, só que direto:
+
+```
+SELECT oi.order_id
+FROM order_items oi
+LEFT ANTI JOIN orders o ON oi.order_id = o.order_id;
+```
+
+Resultado: só `X` só os órfãos, e só as colunas de `order_items` (nem traz colunas de `orders`, porque não faz sentido trazer colunas de algo que não existe pra aquela linha).
+
+coloca em tabela markdown
+
+
+Resumindo a diferença de propósito
+
+| JOIN        | O que retorna                                                     | Pra que serve aqui                                       |
+| ----------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `INNER`     | Só o que casa nos dois lados                                      | Combinar dados relacionados                              |
+| `LEFT`      | Tudo da esquerda + o que casar da direita (`NULL` onde não casar) | Enriquecer dados, mantendo tudo da tabela principal      |
+| `RIGHT`     | Tudo da direita + o que casar da esquerda                         | Mesmo que `LEFT`, só que invertido                       |
+| `LEFT ANTI` | **Só** o que **não** casou                                        | Achar registros órfãos e validar integridade referencial |
+
+Ainda no notebook `02_silver_transform.py`
+ vamos para a Etapa 4 (MERGE INTO).
+
+**MERGE INTO é conceitualmente diferente**
+
+As etapas 1-3 foram todas a mesma operação repetida: ler Bronze → limpar → overwrite na Silver. A issue #14 é outra coisa, é simular uma** atualização incremental** (um "novo batch" chegando depois que a tabela já existe) e fazer um` upsert com MERGE INTO`, que é bem diferente de `overwrite`. Entenda que esse é um conceito novo, não é só "mais uma tabela limpa da mesma forma.
+
+## Simular carga incremental + MERGE INTO
+
+
+
