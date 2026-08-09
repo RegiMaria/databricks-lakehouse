@@ -582,5 +582,60 @@ As etapas 1-3 foram todas a mesma operação repetida: ler Bronze → limpar →
 
 ## Simular carga incremental + MERGE INTO
 
+Antes que qualquer coisa, depois de escrever sua `PR`, volte pra `main` e cria uma nova branch `feature/silver-merge-into`, é opcional.
 
 
+**MERGE INTO**
+
+essa é provavelmente a feature mais "cartão de visita" de todo o Delta Lake, vale o tempo de entender bem o conceito.
+
+**O que é "carga incremental"**
+
+Até agora, todo notebook que escrevemos usou mode("overwrite"), ou seja, toda vez que rodava, apagava a tabela inteira e recriava do zero a partir da Bronze. Isso funciona bem quando você está processando "tudo de novo", mas não é assim que dado funciona no mundo real.
+
+Na vida real, um sistema de vendas gera pedidos novos todo dia. Você não quer reprocessar 99 mil pedidos antigos toda vez que 50 pedidos novos chegam — isso seria lento, caro (processamento desnecessário) e, em sistemas de verdade (com milhões/bilhões de linhas), simplesmente inviável.
+
+Carga incremental é o padrão de só processar o que mudou desde a última execução: os registros novos (inserir) e os que foram atualizados (atualizar), **sem tocar no resto.** 
+É assim que pipelines de produção funcionam, rodando de hora em hora ou diariamente, sempre processando só o "delta" (a diferença) desde a última rodada.
+
+**Por que isso é importante de aprender**
+
+Porque é o cenário que você vai encontrar em praticamente todo emprego de engenharia de dados. Ninguém reprocessa a tabela inteira do zero toda hora — isso é o que separa um exercício de faculdade ("processe esse CSV uma vez") de um pipeline de produção de verdade ("processe os pedidos que chegaram nas últimas 24h, todo dia, para sempre"). É também o motivo de existir `Delta Lake` em primeiro lugar, CSV/Parquet puro não têm um jeito nativo e seguro de fazer isso.
+
+**O que é MERGE INTO**
+
+É o comando que resolve exatamente esse problema: você compara um conjunto de dados "novo" (o batch incremental) contra a tabela existente, e diz: "se o registro já existe (mesma chave), atualiza; se não existe, insere". Essa operação tem nome técnico: upsert (update + insert).
+
+
+```
+
+MERGE INTO tabela_destino AS target
+USING dados_novos AS source
+ON target.chave = source.chave
+WHEN MATCHED THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *
+```
+**Por que MERGE INTO, e não outras formas**
+
+Existem outras abordagens possíveis, mas cada uma tem um problema sério:
+
+1. mode("append") - só adiciona linhas novas, sem checar duplicata. Problema: se você rodar duas vezes com o mesmo batch (por engano, ou porque o job travou e reiniciou), você duplica os dados. Não resolve o caso de "atualizar um pedido que mudou de status".
+
+2. Apagar tudo e reprocessar (overwrite, como fizemos até agora) - funciona, mas não escala. Reprocessar tabelas de bilhões de linhas toda hora é caro e lento.
+
+3. Lógica manual em duas etapas (fazer um DELETE dos registros que vão mudar, depois um INSERT dos novos) - tecnicamente possível, mas não é atômico: se o processo cair no meio (entre o DELETE e o INSERT), você fica com dado inconsistente - registros que sumiram e ainda não voltaram.
+
+`MERGE INTO` resolve os três problemas de uma vez: é atômico (ou a operação inteira funciona, ou nada muda - graças às garantias [`ACID` do `Delta Lake`](https://docs.databricks.com/aws/en/lakehouse/acid) que vocês já estudaram), lida com update e insert no mesmo comando, e não duplica se rodado de novo com o mesmo dado (porque compara pela chave).
+
+**Como vamos simular isso no nosso projeto**
+
+Como não temos um sistema real gerando pedidos novos a cada minuto, vamos simular esse cenário:
+
+1. Pegar um pequeno subconjunto da tabela orders (por exemplo, 100 pedidos)
+2. "Fingir" que alguns já existiam (serão atualizados, ex: mudou o order_status) e outros são novos (serão inseridos)
+3. Rodar MERGE INTO contra silver.orders
+4. Confirmar com `DESCRIBE HISTORY` que a operação ficou registrada como uma versão nova da tabela
+
+**Sobre o nosso critério de aceite "DESCRIBE HISTORY mostra a operação registrada"**
+
+Isso conecta direto com o `Time Travel` que vamos explorar na Sprint 5 - cada `MERGE INTO` cria uma nova versão da tabela Delta, com timestamp, operação e detalhes de quantas linhas foram inseridas/atualizadas. É esse histórico versionado que depois vai permitir "voltar no tempo" se algo der errado.
