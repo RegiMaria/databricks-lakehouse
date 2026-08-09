@@ -528,3 +528,59 @@ ON op.order_id = o.order_id;
 
 Faça o commit!
 
+Por que usamos `LEFT JOIN` + filtro no nosso caso
+
+Poderíamos ter escrito:
+
+```
+SELECT oi.order_id
+FROM order_items oi
+LEFT JOIN orders o ON oi.order_id = o.order_id
+WHERE o.order_id IS NULL;
+
+```
+
+O `LEFT JOIN` Retorna todas as linhas da esquerda, e preenche com NULL onde não achar correspondência na direita,certo?
+
+```
+SELECT * FROM order_items oi
+LEFT JOIN orders o ON oi.order_id = o.order_id;
+```
+
+Resultado: `A` (com dado de orders), `X` (com colunas de orders vindo NULL, porque não achou). Repare: isso traz as colunas de `orders` junto, mesmo quando **não existe correspondência**, você precisaria depois **filtrar** **manualmente**` WHERE o.order_id IS NULL` pra achar só os órfãos.
+
+LEFT ANTI JOIN - o que usamos
+
+Já faz o trabalho que a gente teria que fazer manualmente com `LEFT JOIN + WHERE ... IS NULL`, só que direto:
+
+```
+SELECT oi.order_id
+FROM order_items oi
+LEFT ANTI JOIN orders o ON oi.order_id = o.order_id;
+```
+
+Resultado: só `X` só os órfãos, e só as colunas de `order_items` (nem traz colunas de `orders`, porque não faz sentido trazer colunas de algo que não existe pra aquela linha).
+
+coloca em tabela markdown
+
+
+Resumindo a diferença de propósito
+
+| JOIN        | O que retorna                                                     | Pra que serve aqui                                       |
+| ----------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `INNER`     | Só o que casa nos dois lados                                      | Combinar dados relacionados                              |
+| `LEFT`      | Tudo da esquerda + o que casar da direita (`NULL` onde não casar) | Enriquecer dados, mantendo tudo da tabela principal      |
+| `RIGHT`     | Tudo da direita + o que casar da esquerda                         | Mesmo que `LEFT`, só que invertido                       |
+| `LEFT ANTI` | **Só** o que **não** casou                                        | Achar registros órfãos e validar integridade referencial |
+
+Ainda no notebook `02_silver_transform.py`
+ vamos para a Etapa 4 (MERGE INTO).
+
+**MERGE INTO é conceitualmente diferente**
+
+As etapas 1-3 foram todas a mesma operação repetida: ler Bronze → limpar → overwrite na Silver. A issue #14 é outra coisa, é simular uma** atualização incremental** (um "novo batch" chegando depois que a tabela já existe) e fazer um` upsert com MERGE INTO`, que é bem diferente de `overwrite`. Entenda que esse é um conceito novo, não é só "mais uma tabela limpa da mesma forma.
+
+## Simular carga incremental + MERGE INTO
+
+
+
