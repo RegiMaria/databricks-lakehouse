@@ -639,3 +639,54 @@ Como não temos um sistema real gerando pedidos novos a cada minuto, vamos simul
 **Sobre o nosso critério de aceite "DESCRIBE HISTORY mostra a operação registrada"**
 
 Isso conecta direto com o `Time Travel` que vamos explorar na Sprint 5 - cada `MERGE INTO` cria uma nova versão da tabela Delta, com timestamp, operação e detalhes de quantas linhas foram inseridas/atualizadas. É esse histórico versionado que depois vai permitir "voltar no tempo" se algo der errado.
+
+
+## Auditoria final
+Abra uma nova branch chamada 
+`feature/silver-quality-check`.
+
+Crie um novo notebook chamado `02_silver_quality_check`.
+
+Esse notebook novo (`02_silver_quality_check.py`) vai servir  como uma **auditoria** final da camada Silver inteira: pra cada uma das 6 tabelas que processamos, compararemos:
+
+- Quantas linhas tinha na Bronze vs. quantas sobraram na Silver (quanto foi descartado, e se essa quantidade faz sentido)
+- Quantos nulos existiam nas colunas-chave antes vs. depois (deve ir a zero depois)
+- Quantas duplicatas existiam antes vs. depois (idem)
+
+**Por que isso é importante**
+
+1. Detecção de regressão - se algum dia a gente alterar a lógica de limpeza (numa Sprint futura, ou revisando o código), esse notebook funciona como um "teste automatizado informal": rodar ele de novo revela na hora se alguma tabela quebrou o padrão esperado.
+
+2. Evidência auditável, num lugar só - em vez de vasculhar 4 PRs diferentes procurando "cadê a prova de que orders ficou limpo", você tem um relatório único, consolidado, que qualquer pessoa (ou você mesma, meses depois) consulta pra confirmar a qualidade de toda a camada de uma vez.
+
+3. Antes de avançar pra Gold, você quer ter certeza - a camada Gold vai fazer JOINs entre essas tabelas. Se alguma tiver um problema de qualidade não detectado, ele se propaga e vira um bug muito mais difícil de rastrear lá na frente. Esse notebook é o "portão de qualidade" antes de seguir adiante.
+
+
+Depois de rodar o notebook:
+
+**Como interpretar o resultado esperado**
+
+- A primeira query (resumo Bronze vs Silver) deve mostrar linhas_descartadas baixo ou zero pra maioria, grandes descartes indicariam algo errado na limpeza.
+
+- A segunda query (duplicatas) deve vir toda zerada - já validamos isso individualmente, aqui é só a confirmação consolidada.
+
+- A terceira query (nulos) também deve vir toda zerada - mesma lógica.
+
+Sobre:
+
+`orders: bronze_linhas=99441, silver_linhas=99446, descartadas=-5`
+
+Repare: descartadas deu negativo (-5), o que significa o oposto de "descartado" - a tabela Silver tem 5 linhas a mais que a Bronze, não a menos.
+
+**Por que isso é esperado (e não um erro)**
+
+Lembra da Etapa 4? Nós simulamos um batch incremental e usamos MERGE INTO pra inserir 5 pedidos fictícios novos (sim_001 a sim_005) direto na tabela Silver.
+
+Esses 5 registros nunca existiram na Bronze, eles foram criados artificialmente, direto na Silver, como parte da simulação. Por isso a Silver ficou com 99.446 linhas (99.441 originais + 5 simulados), enquanto a Bronze continua com 99.441 (porque a Bronze nunca foi tocada pelo MERGE INTO).
+
+Adicione uma nota no seu notebook:
+> **Nota sobre `orders`:** o valor negativo em `linhas_descartadas` (-5) é esperado - não indica erro.
+> Reflete os 5 pedidos simulados (`sim_001` a `sim_005`) inseridos via `MERGE INTO` na Etapa 4,
+> que existem na Silver mas nunca passaram pela Bronze.
+
+Escreva a Pull Requests `feature/silver-quality-check → develop` ou/ e `develop → main`.
