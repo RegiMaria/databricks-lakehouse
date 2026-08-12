@@ -36,14 +36,14 @@
   </a>
 </p>
 
-## Databricks-Lakehouse
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Databricks-Lakehouse
 
 Pipeline de dados end-to-end em arquitetura medalhão (Bronze → Silver → Gold) construído no [Databricks Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition), usando o dataset público [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
 Projeto criado com fins de aprendizado, cobrindo os fundamentos de engenharia de dados em um ambiente lakehouse moderno: 
 Delta Lake, PySpark, SQL, Unity Catalog, orquestração de jobs, lineage e Lakeflow Declarative Pipelines.
 
-## Arquitetura
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Arquitetura
 
 Este projeto segue a [Medallion Architecture](https://www.databricks.com/blog/what-is-medallion-architecture), o padrão recomendado pela própria Databricks para organizar dados em camadas de qualidade progressiva:
 
@@ -66,7 +66,7 @@ Este projeto segue a [Medallion Architecture](https://www.databricks.com/blog/wh
   </sub>
 </p>
 
-## Tecnologias
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Tecnologias
 
 - Databricks Free Edition
 - Apache Spark / PySpark
@@ -78,7 +78,7 @@ Este projeto segue a [Medallion Architecture](https://www.databricks.com/blog/wh
 - GitHub Actions (CI - lint automatizado)
 - (Bônus / opcional) Lakeflow Declarative Pipelines
 
-## Dataset
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Dataset
 
 Brazilian [E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) - dados reais e anonimizados de ~100 mil pedidos feitos na loja Olist entre 2016-2018.
 
@@ -98,7 +98,7 @@ Relacionamento central: orders → order_items → products/sellers, e orders �
 
 Detalhamento completo em [docs/data_dictionary.md](https://github.com/RegiMaria/databricks-lakehouse/blob/main/docs/tutorials/04_data_dictionary.md).
 
-## Estrutura do repositório
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Estrutura do repositório
 
 ```text
 olist-lakehouse/
@@ -136,7 +136,7 @@ olist-lakehouse/
 └── README.md
 ```
 
-## Pré-requisitos
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Pré-requisitos
 
 1. Contas e ferramentas
 
@@ -154,7 +154,7 @@ olist-lakehouse/
 - Delta Lake: ACID transactions, MERGE INTO, time travel, OPTIMIZE/VACUUM
 - Unity Catalog: conceito de catalog → schema → tabela/volume
 
-## Setup 
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Setup 
 
 `git clone https://github.com/<usuario>/olist-lakehouse.git`
 `cd olist-lakehouse`
@@ -175,17 +175,49 @@ CREATE VOLUME IF NOT EXISTS olist_project.bronze.raw_files;
 
 Upload dos CSVs do Kaggle para o Volume via UI: Catalog → volume → Upload.
 
-## Plano de sprints
+
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Plano de sprints
 
 Projeto dividido em 5 sprints de 1 semana + 1 sprint bônus, organizadas como Issues/Milestones no GitHub.
 
 Consulte aqui `docs/roadmap`
 
-## Como realizar esse projeto
+
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Como realizar esse projeto
 
 Consulte `docs/tutorials`
 
-##  Documentação oficial de referência
+
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Métricas do Projeto
+
+<!-- Quadro fictício — não depende de nenhum serviço externo instável.
+     Números ilustrativos, é só editar o texto de cada badge. -->
+
+<div align="center">
+
+<img src="https://img.shields.io/badge/🥉_Sprints_conclu%C3%ADdas-5%2F7-FF3621?style=for-the-badge&labelColor=1B1B1B" />
+<img src="https://img.shields.io/badge/📦_Tabelas_criadas-9-C41E3A?style=for-the-badge&labelColor=1B1B1B" />
+<img src="https://img.shields.io/badge/⚙️_Notebooks-8-FF6B4A?style=for-the-badge&labelColor=1B1B1B" />
+<img src="https://img.shields.io/github/commit-activity/t/RegiMaria/databricks-lakehouse?style=for-the-badge&color=FF3621&labelColor=1B1B1B&label=Commits" />
+<img src="https://img.shields.io/badge/✅_CI_status-passing-FF3621?style=for-the-badge&labelColor=1B1B1B" />
+
+</div>
+
+
+---
+
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/> Gráfico de Atividade
+
+<!-- Gráfico de contribuições customizado em tons de vermelho Databricks.
+     Nota: esse gráfico mostra a atividade GERAL do seu perfil no GitHub
+     (não só desse repositório) — é uma limitação do serviço, que trabalha
+     por usuário, não por repositório específico. -->
+
+<img src="https://github-readme-activity-graph.vercel.app/graph?username=RegiMaria&bg_color=1B1B1B&color=FF3621&line=FF6B4A&point=FFFFFF&area=true&hide_border=true" width="100%" />
+
+---
+
+## <img src="https://cdn.simpleicons.org/databricks/FF3621" width="20"/>  Documentação oficial de referência
 
 | 📚 Tópico | 🔗 Documentação Oficial |
 |-----------|-------------------------|
