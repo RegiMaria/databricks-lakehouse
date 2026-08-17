@@ -690,3 +690,99 @@ Adicione uma nota no seu notebook:
 > que existem na Silver mas nunca passaram pela Bronze.
 
 Escreva a Pull Requests `feature/silver-quality-check → develop` ou/ e `develop → main`.
+
+## Sprint 3 - Modelar Star Schema e Noteboo de agregação da tabela Fato fact_orders
+
+### 1.Tabela Fatp fact_orders
+
+Crie uma nova branch `feature/gold-fact-orders`
+Crie um novo `notebook/3_gold_aggregation.py`
+
+**O que vamos fazer, e por quê**
+
+Chegou a hora de construir a tabela fato (fact_orders) que desenhamos no star_schema.md. Diferente das etapas anteriores (que só limpavam uma tabela por vez), aqui vamos fazer o primeiro JOIN de verdade do projeto, juntar silver.orders com silver.order_items pra chegar na granularidade certa (1 linha por item de pedido, não por pedido).
+**
+Por que a granularidade importa**
+
+Se a gente usasse só silver.orders, teria 1 linha por pedido , mas um pedido pode ter vários itens, cada um com seu próprio price. Pra conseguir somar receita corretamente (por produto, por vendedor), a fato precisa estar no nível de item, que é o que order_items já tem. É por isso que o JOIN parte de order_items como base e traz os dados de orders pra cada linha.
+
+**Por que inner join, e não left**
+Usamos how="inner" de propósito: só queremos itens que têm um pedido válido correspondente. Lembra do LEFT ANTI JOIN que fizemos na Etapa 3 pra garantir que não existiam itens órfãos? Isso significa que, nesse ponto, inner e left dariam o mesmo resultado — mas inner deixa a intenção mais clara: "eu exijo que a correspondência exista", em vez de "eu aceito não achar e preencho com nulo".
+
+**O que esperar dos números**
+fact_orders deve ter 112.650 linhas (mesmo total de order_items, já que a granularidade é a mesma)
+pedidos_unicos deve ficar próximo de 99.441-99.446 (o número de pedidos distintos, considerando os simulados da Etapa 4).
+
+Essa é a primeira vez no projeto que combinamos duas tabelas numa só, é literalmente o que separa "dados limpos" (Silver) de "dados prontos pra análise de negócio" (Gold): a Gold junta as peças pra responder perguntas reais, tipo "quanto vendemos por categoria de produto no último trimestre".
+
+### 2. Criar tabelas dimensão na camada gold
+
+Dimensões: dim_customer, dim_product, dim_seller
+
+Ao terminar essa modelagem, depois de toda a limpeza e modelagem, agora as tabelas finalmente respondem perguntas de negócio de verdade.Última issue da Sprint 3!
+
+**O que vamos fazer**
+
+3 queries SQL, todas rodando direto sobre fact_orders + as dimensões, cada uma respondendo uma pergunta de negócio diferente.
+
+**Queries de métricas de negócio**
+1. Vendas por estado e mês
+2. Ticket médio por estado
+3. Ranking de categorias por receita (com window function)
+
+
+**1. Vendas por estado e mês
+**
+date_trunc('month', ...) arredonda o timestamp pro início do mês (ex: qualquer data de agosto vira 2017-08-01), permitindo agrupar por mês sem precisar extrair ano/mês manualmente. GROUP BY combina estado + mês, então cada linha responde "quanto vendemos nesse estado, nesse mês".
+
+**2. Ticket médio por estado**
+
+Ticket médio = receita total dividida pelo número de pedidos (não itens — por isso COUNT(DISTINCT f.order_id), já que um pedido pode ter vários itens/linhas). Isso responde "qual estado tem os clientes que gastam mais por compra".
+
+**3. Ranking de categorias — a window function**
+```
+RANK() OVER (ORDER BY SUM(f.price) DESC) AS ranking
+```
+Essa é a parte nova. RANK() OVER (...) é uma window function: diferente de GROUP BY (que colapsa linhas), a window function calcula um valor relativo às outras linhas do resultado, sem perder o detalhe de cada uma. Aqui, RANK() atribui uma posição (1º, 2º, 3º...) a cada categoria, baseado na receita total, ordenando do maior pro menor. Isso é diferente de simplesmente ORDER BY, o RANK() te dá o número da posição como um valor de dados, que você pode filtrar, comparar, usar em relatórios ("mostra as top 5 categorias").
+
+
+**O que os números mostra?**
+
+Interpretando so resultados
+
+1. Vendas por estado e mês 
+
+Crescimento consistente ao longo do tempo: São Paulo saiu de ~R$135 em setembro/2016 (mês de lançamento, praticamente sem dado) para R$436 mil em maio/2018, um crescimento expressivo e sustentado, não um pico isolado.
+
+Concentração geográfica forte: os 3 primeiros estados (SP, RJ, MG) dominam o volume em praticamente todos os meses, SP sozinho costuma representar mais receita que os próximos 3-4 estados somados. Isso é esperado (são os estados mais populosos/urbanizados do Brasil), mas é um dado relevante pra decisão de logística, marketing regional ou expansão de centros de distribuição.
+
+Sazonalidade visível: novembro/2017 (mês de Black Friday) mostra um salto perceptível em quase todos os estados comparado aos meses vizinhos, vale destacar isso como evidência de que a Black Friday é um evento comercial relevante pra esse negócio.
+
+2. Ticket médio por estado - o insight mais contraintuitivo
+
+Esse é o dado mais interessante pra apresentar, porque inverte a expectativa:
+
+SP tem o MENOR ticket médio (R$125,75), mesmo sendo o estado com mais vendas
+PB (Paraíba) tem o MAIOR ticket médio (R$216,67), apesar de ter bem menos pedidos (532 vs. 41.375 de SP)
+
+O que isso significa pro negócio: São Paulo vende em volume (muitos pedidos, ticket baixo - perfil de e-commerce de massa), enquanto estados menores como PB, AP, AC, AL vendem em valor (poucos pedidos, mas cada um maior). Isso pode indicar: (a) perfil de cliente diferente por região, (b) menor concorrência/frete mais caro embutido no preço em estados mais distantes, ou (c) categorias de produto diferentes sendo compradas. É um ótimo gancho pra próxima pergunta de negócio: "o que estão comprando em PB que não compram em SP?"
+
+3. Ranking de categorias - onde está o dinheiro
+
+Top 5 categorias por receita:
+
+Beleza e saúde - R$1,26 milhão
+Relógios e presentes — R$1,21 milhão
+Cama, mesa e banho - R$1,04 milhão
+Esporte e lazer - R$988 mil
+Informática/acessórios - R$912 mil
+
+Leitura de negócio: as duas categorias líderes (beleza e relógios/presentes) somadas já superam R$2,4 milhões - mais que o dobro da terceira colocada. Isso sugere que investimento em marketing, estoque e parcerias de fornecedores deveria priorizar essas duas categorias primeiro, já que concentram a maior fatia de receita da plataforma.
+
+**Sugestão de como estruturar isso numa apresentação**
+Monte gráficos visuais com os resultados que ja temos!
+
+Slide 1 - Crescimento: gráfico de linha (SP ao longo do tempo) mostrando a curva ascendente + pico da Black Friday
+Slide 2 - O paradoxo do ticket médio: gráfico de barras comparando SP vs. os 5 estados de maior ticket médio, com a pergunta em aberto pra investigação futura
+Slide 3 - Top 5 categorias: gráfico de barras horizontal, com destaque pras 2 líderes
+
