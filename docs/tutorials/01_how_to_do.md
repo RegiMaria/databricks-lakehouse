@@ -690,3 +690,35 @@ Adicione uma nota no seu notebook:
 > que existem na Silver mas nunca passaram pela Bronze.
 
 Escreva a Pull Requests `feature/silver-quality-check → develop` ou/ e `develop → main`.
+
+## Sprint 3 - Modelar Star Schema e Noteboo de agregação da tabela Fato fact_orders
+
+### 1.Tabela Fatp fact_orders
+
+Crie uma nova branch `feature/gold-fact-orders`
+Crie um novo `notebook/3_gold_aggregation.py`
+
+**O que vamos fazer, e por quê**
+
+Chegou a hora de construir a tabela fato (fact_orders) que desenhamos no star_schema.md. Diferente das etapas anteriores (que só limpavam uma tabela por vez), aqui vamos fazer o primeiro JOIN de verdade do projeto, juntar silver.orders com silver.order_items pra chegar na granularidade certa (1 linha por item de pedido, não por pedido).
+**
+Por que a granularidade importa**
+
+Se a gente usasse só silver.orders, teria 1 linha por pedido , mas um pedido pode ter vários itens, cada um com seu próprio price. Pra conseguir somar receita corretamente (por produto, por vendedor), a fato precisa estar no nível de item, que é o que order_items já tem. É por isso que o JOIN parte de order_items como base e traz os dados de orders pra cada linha.
+
+**Por que inner join, e não left**
+Usamos how="inner" de propósito: só queremos itens que têm um pedido válido correspondente. Lembra do LEFT ANTI JOIN que fizemos na Etapa 3 pra garantir que não existiam itens órfãos? Isso significa que, nesse ponto, inner e left dariam o mesmo resultado — mas inner deixa a intenção mais clara: "eu exijo que a correspondência exista", em vez de "eu aceito não achar e preencho com nulo".
+
+**O que esperar dos números**
+fact_orders deve ter 112.650 linhas (mesmo total de order_items, já que a granularidade é a mesma)
+pedidos_unicos deve ficar próximo de 99.441-99.446 (o número de pedidos distintos, considerando os simulados da Etapa 4).
+
+Essa é a primeira vez no projeto que combinamos duas tabelas numa só, é literalmente o que separa "dados limpos" (Silver) de "dados prontos pra análise de negócio" (Gold): a Gold junta as peças pra responder perguntas reais, tipo "quanto vendemos por categoria de produto no último trimestre".
+
+### 2. Criar tabelas dimensão na camada gold
+
+Dimensões: dim_customer, dim_product, dim_seller
+
+
+
+
