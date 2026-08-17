@@ -744,3 +744,45 @@ Ticket médio = receita total dividida pelo número de pedidos (não itens — p
 RANK() OVER (ORDER BY SUM(f.price) DESC) AS ranking
 ```
 Essa é a parte nova. RANK() OVER (...) é uma window function: diferente de GROUP BY (que colapsa linhas), a window function calcula um valor relativo às outras linhas do resultado, sem perder o detalhe de cada uma. Aqui, RANK() atribui uma posição (1º, 2º, 3º...) a cada categoria, baseado na receita total, ordenando do maior pro menor. Isso é diferente de simplesmente ORDER BY, o RANK() te dá o número da posição como um valor de dados, que você pode filtrar, comparar, usar em relatórios ("mostra as top 5 categorias").
+
+
+**O que os números mostra?**
+
+Interpretando so resultados
+
+1. Vendas por estado e mês 
+
+Crescimento consistente ao longo do tempo: São Paulo saiu de ~R$135 em setembro/2016 (mês de lançamento, praticamente sem dado) para R$436 mil em maio/2018, um crescimento expressivo e sustentado, não um pico isolado.
+
+Concentração geográfica forte: os 3 primeiros estados (SP, RJ, MG) dominam o volume em praticamente todos os meses, SP sozinho costuma representar mais receita que os próximos 3-4 estados somados. Isso é esperado (são os estados mais populosos/urbanizados do Brasil), mas é um dado relevante pra decisão de logística, marketing regional ou expansão de centros de distribuição.
+
+Sazonalidade visível: novembro/2017 (mês de Black Friday) mostra um salto perceptível em quase todos os estados comparado aos meses vizinhos, vale destacar isso como evidência de que a Black Friday é um evento comercial relevante pra esse negócio.
+
+2. Ticket médio por estado - o insight mais contraintuitivo
+
+Esse é o dado mais interessante pra apresentar, porque inverte a expectativa:
+
+SP tem o MENOR ticket médio (R$125,75), mesmo sendo o estado com mais vendas
+PB (Paraíba) tem o MAIOR ticket médio (R$216,67), apesar de ter bem menos pedidos (532 vs. 41.375 de SP)
+
+O que isso significa pro negócio: São Paulo vende em volume (muitos pedidos, ticket baixo - perfil de e-commerce de massa), enquanto estados menores como PB, AP, AC, AL vendem em valor (poucos pedidos, mas cada um maior). Isso pode indicar: (a) perfil de cliente diferente por região, (b) menor concorrência/frete mais caro embutido no preço em estados mais distantes, ou (c) categorias de produto diferentes sendo compradas. É um ótimo gancho pra próxima pergunta de negócio: "o que estão comprando em PB que não compram em SP?"
+
+3. Ranking de categorias - onde está o dinheiro
+
+Top 5 categorias por receita:
+
+Beleza e saúde - R$1,26 milhão
+Relógios e presentes — R$1,21 milhão
+Cama, mesa e banho - R$1,04 milhão
+Esporte e lazer - R$988 mil
+Informática/acessórios - R$912 mil
+
+Leitura de negócio: as duas categorias líderes (beleza e relógios/presentes) somadas já superam R$2,4 milhões - mais que o dobro da terceira colocada. Isso sugere que investimento em marketing, estoque e parcerias de fornecedores deveria priorizar essas duas categorias primeiro, já que concentram a maior fatia de receita da plataforma.
+
+**Sugestão de como estruturar isso numa apresentação**
+Monte gráficos visuais com os resultados que ja temos!
+
+Slide 1 - Crescimento: gráfico de linha (SP ao longo do tempo) mostrando a curva ascendente + pico da Black Friday
+Slide 2 - O paradoxo do ticket médio: gráfico de barras comparando SP vs. os 5 estados de maior ticket médio, com a pergunta em aberto pra investigação futura
+Slide 3 - Top 5 categorias: gráfico de barras horizontal, com destaque pras 2 líderes
+
