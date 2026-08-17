@@ -719,6 +719,28 @@ Essa é a primeira vez no projeto que combinamos duas tabelas numa só, é liter
 
 Dimensões: dim_customer, dim_product, dim_seller
 
+Ao terminar essa modelagem, depois de toda a limpeza e modelagem, agora as tabelas finalmente respondem perguntas de negócio de verdade.Última issue da Sprint 3!
+
+**O que vamos fazer**
+
+3 queries SQL, todas rodando direto sobre fact_orders + as dimensões, cada uma respondendo uma pergunta de negócio diferente.
+
+**Queries de métricas de negócio**
+1. Vendas por estado e mês
+2. Ticket médio por estado
+3. Ranking de categorias por receita (com window function)
 
 
+**1. Vendas por estado e mês
+**
+date_trunc('month', ...) arredonda o timestamp pro início do mês (ex: qualquer data de agosto vira 2017-08-01), permitindo agrupar por mês sem precisar extrair ano/mês manualmente. GROUP BY combina estado + mês, então cada linha responde "quanto vendemos nesse estado, nesse mês".
 
+**2. Ticket médio por estado**
+
+Ticket médio = receita total dividida pelo número de pedidos (não itens — por isso COUNT(DISTINCT f.order_id), já que um pedido pode ter vários itens/linhas). Isso responde "qual estado tem os clientes que gastam mais por compra".
+
+**3. Ranking de categorias — a window function**
+```
+RANK() OVER (ORDER BY SUM(f.price) DESC) AS ranking
+```
+Essa é a parte nova. RANK() OVER (...) é uma window function: diferente de GROUP BY (que colapsa linhas), a window function calcula um valor relativo às outras linhas do resultado, sem perder o detalhe de cada uma. Aqui, RANK() atribui uma posição (1º, 2º, 3º...) a cada categoria, baseado na receita total, ordenando do maior pro menor. Isso é diferente de simplesmente ORDER BY, o RANK() te dá o número da posição como um valor de dados, que você pode filtrar, comparar, usar em relatórios ("mostra as top 5 categorias").
