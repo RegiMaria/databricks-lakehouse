@@ -902,3 +902,31 @@ Configurar um trigger de schedule pro Job que nós acabamos de criar,ou seja, fa
 
 ### Trigger de Schedule de JOB
 
+Passo a passo (quando você voltar)
+1. Vá em Jobs & Pipelines → olist_lakehouse_pipeline
+2. Procure a aba/seção Schedules & Triggers (geralmente fica à direita)
+3. Clique em Add trigger (ou "Edit schedule")
+4. Escolha Scheduled
+5. Configure a frequência - pra esse projeto, sugiro algo simples tipo diário, num horário qualquer (ex: todo dia às 6h da manhã), já que não temos dado real chegando de hora em hora
+6. Salve
+
+
+Na Issues, temos um segundo critério:ao menos 1 execução automática registrada
+
+Isso é importante - só configurar o schedule não basta pra fechar a issue,
+a gente precisa esperar (ou forçar) pelo menos uma execução que tenha sido disparada pelo agendamento,
+não por "Run now" manual. 
+
+Duas opções:
+
+1. Esperar o horário programado chegar de verdade (mais realista, mas você precisa voltar depois pra conferir)
+
+2. Configurar pra rodar em poucos minutos só pra gerar essa evidência rápido (ex: agendar pra "daqui a 5 minutos" só pra capturar o print), e depois reconfigurar pro horário "de verdade" que você quer manter
+
+Quando o Job rodar via schedule, ele aparece no histórico de execuções com a coluna "Launched" mostrando "Scheduled" em vez de "Manually" (repare que no seu print anterior, aparecia "Manually" - é essa diferença que prova que foi automático).
+
+
+![schedule-trigger](
+<img width="1890" height="604" alt="Image" src="https://github.com/user-attachments/assets/1cd4b643-db95-4416-a333-6466aa8f105f" />)
+
+
