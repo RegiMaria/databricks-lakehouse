@@ -786,3 +786,147 @@ Slide 1 - Crescimento: gráfico de linha (SP ao longo do tempo) mostrando a curv
 Slide 2 - O paradoxo do ticket médio: gráfico de barras comparando SP vs. os 5 estados de maior ticket médio, com a pergunta em aberto pra investigação futura
 Slide 3 - Top 5 categorias: gráfico de barras horizontal, com destaque pras 2 líderes
 
+
+# SPRINT 4 - Criar o Job
+
+### Criar o JOB
+
+Primeiro, vamos criar ua branch pro job: `feature/gold-fact-orders,`
+
+**O que é um "Job" no Databricks, e por que importa**
+
+Até agora, a gente rodou cada notebook manualmente, clicando em "Run All". Um Job (ou Workflow)
+é a forma de automatizar isso: você configura uma sequência de notebooks pra rodar sozinhos, um depois do outro,
+sem você precisar abrir cada um. Isso é literalmente o que transforma "um monte de notebooks que eu rodo à mão"
+em "um pipeline de produção de verdade", é o critério que separa projeto de estudo de projeto profissional.
+
+
+**Passo a passo (interface do Databricks)**
+
+1. No menu lateral esquerdo, clique em Jobs & Pipelines (ou "Workflows", dependendo da versão da UI)
+2. Clique em Create Job
+
+3. Nomeie o Job: `olist_lakehouse_pipeline`
+4. Task 1:
+- Nome: `bronze_ingestion`
+- Tipo: Notebook
+- Caminho: `notebooks/01_bronze_ingestion.py`
+
+5. Clique em Add task pra criar a Task 2:
+- Nome: `silver_transform`
+- Tipo: Notebook
+- Caminho: `notebooks/02_silver_transform.py`
+- Depends on: selecione bronze_ingestion (isso cria a dependência sequencial)
+
+6. Add task de novo pra Task 3:
+- Nome: `gold_aggregation`
+- Tipo: Notebook
+- Caminho:` notebooks/03_gold_aggregation.py`
+- Depends on: silver_transform
+
+**Sobre o `02_silver_quality_check.py` e o `00_setup.py`**
+
+Você pode incluir esses também como tasks, mas eles têm papéis diferentes:
+
+`00_setup.py` - cria a infraestrutura (catalog/schema/volume), só precisa rodar uma vez (não faz sentido rodar toda vez que o Job dispara) - deixaria de fora do Job recorrente
+`02_silver_quality_check.py` - é uma auditoria, faz sentido rodar depois do silver_transform, como uma 4ª task opcional, mas não é estritamente necessário pro critério de aceite.
+
+Vamos manter  só as 3 tasks essenciais (Bronze → Silver → Gold) pra cumprir o critério de aceite de forma limpa,
+e mencionar no README que `00_setup` e `quality_check` são notebooks complementares, fora do fluxo recorrente.
+
+**Depois de criar**
+
+7. Clique em Run now pra testar manualmente
+8. Confirme que as 3 tasks rodam em sequência (não em paralelo) e todas terminam com sucesso (ícone verde)
+
+![Imagem-jog](<img width="1843" height="835" alt="Image" src="https://github.com/user-attachments/assets/da7336eb-f5d7-459b-a010-942802b8e003" />)
+
+![Imagem-timeline-bronze](<img width="1803" height="857" alt="Image" src="https://github.com/user-attachments/assets/9d757b9d-e50e-49a3-b995-afd4990f5fec" />)
+
+**Sobre as células que tem markdonw**
+
+Quando o Databricks executa um notebook como parte de um Job, ele roda célula por célula, na ordem,
+exatamente como quando você clica "Run All" manualmente. Células de %md (texto explicativo),
+são simplesmente renderizadas, não executam lógica nenhuma,
+não têm "sucesso" ou "erro" possível, então **nunca vão fazer o Job falhar**.
+
+Resumindo:
+
+**Passo a passo pra criar o Job**
+1. Menu lateral → Jobs & Pipelines → Create Job
+2. Nome do Job: olist_lakehouse_pipeline
+3. Task 1: nome bronze_ingestion, tipo Notebook, caminho notebooks/01_bronze_ingestion.py
+4. Add task → Task 2: nome silver_transform, tipo Notebook, caminho notebooks/02_silver_transform.py, Depends on: bronze_ingestion
+5. Add task → Task 3: nome gold_aggregation, tipo Notebook, caminho notebooks/03_gold_aggregation.py, Depends on: silver_transform
+6. Clique Run now pra testar
+
+
+**O que acompanhar agora**
+
+**Enquanto roda, fica de olho em:**
+
+**Status de cada task** - deve mostrar visualmente as 3 tasks numa sequência (geralmente um diagrama tipo fluxograma na tela do Job run), com bronze_ingestion rodando primeiro, e silver_transform/gold_aggregation aparecendo como "pending" ou "waiting" até a Bronze terminar.
+
+**Tempo esperado** - como esse notebook processa 9 tabelas do zero (incluindo aquela product_category_name_translation que corrigimos), pode levar alguns minutos. 1m03s de duração até agora é normal pra esse volume de dado no Free Edition.
+
+**Se der erro em alguma task** - o Databricks marca a task com ❌ e geralmente mostra o log/stack trace direto na tela. Se acontecer, me manda a mensagem de erro que a gente resolve.
+
+
+**O que a Timeline mostra**
+
+Cada barra verde é uma célula do notebook, com sua duração de execução. As barras maiores e mais escuras (bronze_ingestion, silver_transform, gold_aggregation) são o resumo da task inteira; as barras menores dentro delas são as células individuais - dá pra expandir/recolher cada task pra ver o detalhe.
+**
+O que você deve olhar, na prática**
+
+1. Cor verde = sucesso. Se alguma barra aparecesse vermelha, seria uma célula que falhou - nenhuma falhou aqui, então está tudo certo.
+
+2. Sequência confirmada visualmente. Repare que `bronze_ingestion` (1m52s) termina exatamente onde `silver_transform` (1m15s) começa, que termina exatamente onde gold_aggregation (36.6s) começa. Isso é a prova visual de que a dependência que configuramos funcionou — nada rodou em paralelo por engano, cada task esperou a anterior terminar.
+
+3. Duração total do pipeline. Somando as três: 1m52s + 1m15s + 36.6s ≈ 3m43s pra processar o dataset inteiro do zero, do CSV bruto até as métricas de negócio. Esse número é útil de guardar - é sua "baseline" de performance, caso você otimize depois (Sprint 4 tem OPTIMIZE/VACUUM, que podem mudar esse tempo).
+
+4. Onde o tempo está concentrado. bronze_ingestion foi a mais lenta (1m52s) — faz sentido, é ali que o Spark lê 9 CSVs do zero e infere schema, a parte mais "pesada" de I/O. Isso é normal, mas é o tipo de informação que, num cenário real de produção, ajudaria a decidir onde otimizar primeiro se o pipeline precisasse rodar mais rápido.
+
+**Um detalhe - os ícones vermelhos **🔴
+
+Antes de você seguir, vale investigar: vai aparecer dois ícones de "lâmpada vermelha"
+ao lado de print(f"orders_sil... e print(f"products_s... dentro da silver_transform.
+Isso geralmente é um indicador de aviso/insight do Databricks (não é erro - a barra continua verde e a task terminou com sucesso),
+mas pode ser algo tipo "esse comando pode ser otimizado" ou uma sugestão de performance.
+
+![imagem-insight-01](<img width="677" height="650" alt="Image" src="https://github.com/user-attachments/assets/6e3f2019-85ca-4a8b-8251-4a9b1c4f8357" />)
+
+![imagem-insight-02](<img width="694" height="663" alt="Image" src="https://github.com/user-attachments/assets/eb95befe-f391-4ffd-97dd-21b9168c0164" />)
+
+O que vamos fazer a seguir?
+Configurar um trigger de schedule pro Job que nós acabamos de criar,ou seja, fazer ele rodar sozinho, num horário programado, sem a gente precisar clicar em "Run now" toda vez.
+
+### Trigger de Schedule de JOB
+
+Passo a passo (quando você voltar)
+1. Vá em Jobs & Pipelines → olist_lakehouse_pipeline
+2. Procure a aba/seção Schedules & Triggers (geralmente fica à direita)
+3. Clique em Add trigger (ou "Edit schedule")
+4. Escolha Scheduled
+5. Configure a frequência - pra esse projeto, sugiro algo simples tipo diário, num horário qualquer (ex: todo dia às 6h da manhã), já que não temos dado real chegando de hora em hora
+6. Salve
+
+
+Na Issues, temos um segundo critério:ao menos 1 execução automática registrada
+
+Isso é importante - só configurar o schedule não basta pra fechar a issue,
+a gente precisa esperar (ou forçar) pelo menos uma execução que tenha sido disparada pelo agendamento,
+não por "Run now" manual. 
+
+Duas opções:
+
+1. Esperar o horário programado chegar de verdade (mais realista, mas você precisa voltar depois pra conferir)
+
+2. Configurar pra rodar em poucos minutos só pra gerar essa evidência rápido (ex: agendar pra "daqui a 5 minutos" só pra capturar o print), e depois reconfigurar pro horário "de verdade" que você quer manter
+
+Quando o Job rodar via schedule, ele aparece no histórico de execuções com a coluna "Launched" mostrando "Scheduled" em vez de "Manually" (repare que no seu print anterior, aparecia "Manually" - é essa diferença que prova que foi automático).
+
+
+![schedule-trigger](
+<img width="1890" height="604" alt="Image" src="https://github.com/user-attachments/assets/1cd4b643-db95-4416-a333-6466aa8f105f" />)
+
+
