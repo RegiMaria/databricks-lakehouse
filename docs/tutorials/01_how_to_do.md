@@ -930,3 +930,63 @@ Quando o Job rodar via schedule, ele aparece no histórico de execuções com a 
 <img width="1890" height="604" alt="Image" src="https://github.com/user-attachments/assets/1cd4b643-db95-4416-a333-6466aa8f105f" />)
 
 
+### Governance & Maintenance
+OPTMIZE / VACUUM / Lineage
+
+Manutenção da camada Silver/Gold: OPTIMIZE (compactação de arquivos)
+e VACUUM (limpeza de versões antigas), fechando a Sprint 4.OPTMIZE / VACCUM / Lineage
+
+Notebook: `04_governance_maintenance.py`
+Nova branch: `feature/optimize-vacuum-lineage`
+
+**OPTIMIZE**
+O que é e por que importa
+
+Toda vez que escrevemos numa tabela Delta (lembra dos vários mode("overwrite") e o MERGE INTO?), o Spark cria arquivos físicos por trás dos panos -geralmente vários arquivos pequenos, principalmente depois de operações incrementais como o MERGE INTO que fizemos. Muitos arquivos pequenos deixam a leitura mais lenta (o Spark precisa abrir e fechar cada um).
+
+OPTIMIZE compacta esses arquivos pequenos em arquivos maiores e mais eficientes, sem mudar o conteúdo da tabela - só a forma como está fisicamente organizada em disco.
+
+```
+OPTIMIZE olist_project.silver.orders;
+OPTIMIZE olist_project.gold.fact_orders;
+```
+
+Rodando nessas duas já cumpre "pelo menos 2 tabelas" do critério de aceite da nossa Issue #22, mas pode rodar em mais se quiser (silver.customers, gold.dim_customer, etc.).
+
+**VACUUM**
+O que é e por que importa
+
+Lembra do Time Travel? Cada operação (MERGE INTO, overwrite) mantém os arquivos antigos por baixo, é isso que permite voltar a uma versão anterior. Só que isso acumula espaço em disco com o tempo. VACUUM apaga fisicamente os arquivos que não são mais referenciados por nenhuma versão dentro do período de retenção.
+```
+sql
+VACUUM olist_project.silver.orders RETAIN 168 HOURS;
+```
+168 HOURS = 7 dias, que é a retenção padrão e mínima seguraque o Delta Lake recomenda — abaixo disso, você arrisca quebrar o Time Travel de operações concorrentes em andamento.
+
+⚠️ Atenção real aqui: depois de rodar VACUUM, você perde a capacidade de fazer Time Travel pra versões mais antigas que os arquivos removidos. Isso é importante documentar no README como comportamento esperado — não é bug, é o próprio propósito do comando.
+
+Fechamos a Issue #23!
+
+**Lineage Graph**
+
+Depois que o Job rodou (você já rodou o pipeline algumas vezes ontem), o Unity Catalog já capturou o lineage automaticamente. É só ir visualizar e capturar print:
+
+`Catalog → olist_project → gold → fact_orders`
+Aba Lineage
+
+Deve mostrar o grafo: `bronze.orders + bronze.order_items → silver.orders + silver.order_items → gold.fact_orders`
+
+Salvar o print em `screenshots/lineage_fact_orders.png`
+
+**Como subir a imagem**
+
+A forma mais simples: fazer isso direto pela interface web do GitHub, não pelo Databricks:
+
+1. Na raiz do Git folder, botão direito → Create → Folder → nome screenshots (se ainda não existir)
+
+Arraste o PNG (03-lineage-graph-screeshots.png), mas renomeie pra lineage_fact_orders.png antes de subir, seguindo o padrão que já tínhamos combinado no README
+
+Commit direto ali, com a mensagem de commit
+
+`docs: adiciona screenshot do lineage graph de fact_orders`
+
