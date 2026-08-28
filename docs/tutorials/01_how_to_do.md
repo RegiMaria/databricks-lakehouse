@@ -990,3 +990,100 @@ Commit direto ali, com a mensagem de commit
 
 `docs: adiciona screenshot do lineage graph de fact_orders`
 
+# SPRINT 5
+### Simular um incidente real (ex: DELETE indevido) e recuperar via RESTORE TABLE ... VERSION AS OF.
+
+Notebook: `05_time_travel_demo`
+Branch: `feature/time-travel-demo`
+
+**O que vamos fazer, e por quê**
+
+Até agora vimos o Time Travel só de relance (no DESCRIBE HISTORY depois do MERGE INTO). Agora vamos provar de verdade que ele funciona: simular um erro grave (um DELETE acidental, tipo alguém rodando uma query errada em produção), confirmar o estrago, e recuperar os dados usando RESTORE TABLE.
+
+**Por que isso é importante de aprender**
+
+Esse é o cenário mais temido (e mais comum) em qualquer trabalho com dados reais: alguém roda um DELETE/UPDATE sem WHERE, ou com filtro errado, e apaga dado que não devia. Em bancos tradicionais sem versionamento, isso é catástrofe,  você precisa restaurar de backup (se tiver), perdendo tudo desde o último backup. No Delta Lake, é resolvido em segundos com um comando.
+
+O notebok vai se chamar: 05 - Time Travel Demo
+
+imula um incidente real: exclusão indevida de dados em silver.orders,
+seguida de recuperação via RESTORE TABLE.
+
+Rode a célula:
+
+1. Estado antes do incidente
+
+Agora vamos fazer a simulação.
+Simulação: um DELETE sem filtro adequado, apagando todos os pedidos
+do estado de SP por engano (deveria ter sido um filtro mais específico).
+
+2. [INCIDENTE] Exclusão indevida
+
+3. Confirmação do estrago
+
+4. Identificação da versão a restaurar
+Tente restaurar a versão 1
+
+5. Recuperação via RESTORE TABLE
+
+**Atenção: Ao tentar restaura a VERSÃO 1**
+Recebemos o aviso:
+```
+[DELTA_UNSUPPORTED_TIME_TRAVEL_BEYOND_DELETED_FILE_RETENTION_DURATION] Cannot time travel beyond delta.deletedFileRetentionDuration (168 HOURS) set on the table. SQLSTATE: 0AKDC
+```
+Na Issue #23, aplicamos VACCUM  e o VACUUM apagou fisicamente os arquivos de dados que não eram mais referenciados por nenhuma versão dentro da janela de 7 dias. Só que a versão "1" que estamos tentando restaurar (do MERGE INTO da Sprint 2, há mais de uma semana) provavelmente já teve seus arquivos removidos por aquele VACUUM, mesmo a entrada no histórico (DESCRIBE HISTORY) ainda existindo como metadado, os arquivos físicos daquela versão específica **não existem mais em disco**.
+
+É exatamente o "ponto de atenção" que a gente documentou na issue #23:
+
+> depois de rodar VACUUM, você perde a capacidade de fazer Time Travel pra versões mais antigas que os arquivos removidos
+
+Isso não é bug nem erro nosso, é o Delta Lake protegendo a gente de tentar restaurar pra um estado cujos dados não existem mais fisicamente.
+
+**Como resolver**
+
+Você precisa fazer o RESTORE pra uma versão mais recente, uma que tenha sido criada depois do VACUUM, e portanto ainda tenha arquivos físicos preservados.
+
+**Passo 1**: rode DESCRIBE HISTORY de novo e olhe as versões mais recentes (as de hoje, próximas do momento em que você rodou o DELETE do incidente). A versão que você quer é a que veio imediatamente antes do DELETE, não a "versão 1" antiga.
+
+```
+DESCRIBE HISTORY olist_project.silver.orders
+```
+**Passo 2**: identifique visualmente qual número de versão corresponde ao estado antes do DELETE que você acabou de rodar agora (deve ser a penúltima linha, cronologicamente falando — a última é o próprio DELETE).
+
+**Passo 3**: ajuste o RESTORE pra esse número certo.
+
+6. Confirmação da recuperação
+
+**O que os dados mostram**
+
+Antes do incidente: 99.446 linhas (célula 2), com a versão 14 sendo o MERGE INTO da Sprint 2 (a mesma operação de sempre, 50 atualizados + 5 inseridos).
+
+**O incidente:** DELETE FROM olist_project.silver.orders (sem WHERE, célula 6) - apagou as 99.446 linhas inteiras. Repare no` DESCRIBE HISTORY` depois: essa operação virou a versão 15, com numDeletedRows: 99446 registrado explicitamente nas métricas — prova documental do estrago.
+
+**Confirmação do estrago**: 0 linhas (célula 8) - a tabela ficou vazia.
+
+A tentativa que falhou: você foi na versão 1 primeiro (o erro que resolvemos juntas), que já tinha sido "limpa" pelo VACUUM da issue #23.
+
+**A recuperação certa: **RESTORE TABLE ... TO VERSION AS OF 14 - a versão imediatamente anterior ao DELETE (que virou a 15).
+
+**Resultado da restauração**: numRestoredFiles: 7 (recolocou os 7 arquivos que o DELETE tinha removido).
+
+**Confirmação final:** 99.446 linhas de volta — recuperação completa e exata, batendo com o número de antes do incidente.
+
+**Por que isso é um exemplo tão bom pro teu portfólio**
+
+A gente documentou, um cenário realista de produção: tentar restaurar uma versão "óbvia" (a mais antiga), descobrir que o VACUUM já tinha limpado ela, e ter que recalcular qual versão de fato tinha arquivos disponíveis. Isso é exatamente o tipo de `troubleshooting` que acontece na vida real, muito mais valioso pro portfólio do que se tivesse dado certo de primeira, porque mostra que você entende a relação entre** VACUUM e Time Travel na prática**, não só na teoria.
+
+Não esqueça de documentar no README e no notebook.
+
+Isso fecha os critérios de aceite da #25 com folga:
+- incidente simulado ✅,
+- horário registrado no DESCRIBE HISTORY ✅,
+- comando de recuperação documentado ✅,
+- e ainda um bônus de troubleshooting real.
+
+Escreva a PR e vamos para a Issue #26; Criar dashboard no Databricks SQL
+
+### Criar dashboard no Databricks SQL
+
+
