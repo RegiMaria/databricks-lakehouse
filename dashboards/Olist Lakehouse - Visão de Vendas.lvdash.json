@@ -1,0 +1,387 @@
+{
+  "datasets": [
+    {
+      "name": "44f76fae",
+      "displayName": "Monthly Revenue by State Summary",
+      "queryLines": [
+        "USE CATALOG `workspace`;\n",
+        "\n",
+        "USE SCHEMA `default`;\n",
+        "\n",
+        "SELECT\n",
+        "  c.customer_state,\n",
+        "  date_trunc('month', f.order_purchase_timestamp) AS mes,\n",
+        "  ROUND(SUM(f.price), 2) AS receita_total\n",
+        "FROM\n",
+        "  olist_project.gold.fact_orders f\n",
+        "    JOIN olist_project.gold.dim_customer c\n",
+        "      ON f.customer_id = c.customer_id\n",
+        "GROUP BY\n",
+        "  c.customer_state,\n",
+        "  date_trunc('month', f.order_purchase_timestamp)\n",
+        "ORDER BY\n",
+        "  mes"
+      ]
+    },
+    {
+      "name": "57dfaf08",
+      "displayName": "Top Ten Product Categories by Revenue Analysis",
+      "queryLines": [
+        "USE CATALOG `workspace`;\n",
+        "USE SCHEMA `default`;\n",
+        "\n",
+        "SELECT\n",
+        "    p.product_category_name_english AS categoria,\n",
+        "    ROUND(SUM(f.price), 2) AS receita_total\n",
+        "FROM olist_project.gold.fact_orders f\n",
+        "JOIN olist_project.gold.dim_product p ON f.product_id = p.product_id\n",
+        "WHERE p.product_category_name_english IS NOT NULL\n",
+        "GROUP BY p.product_category_name_english\n",
+        "ORDER BY receita_total DESC\n",
+        "LIMIT 10"
+      ]
+    },
+    {
+      "name": "3b74a944",
+      "displayName": "Average Ticket Value by State Analysis",
+      "queryLines": [
+        "-- Gráfico 3 — Ticket médio por estado (barra)\r\n",
+        "SELECT\r\n",
+        "    c.customer_state,\r\n",
+        "    ROUND(SUM(f.price) / COUNT(DISTINCT f.order_id), 2) AS ticket_medio\r\n",
+        "FROM olist_project.gold.fact_orders f\r\n",
+        "JOIN olist_project.gold.dim_customer c ON f.customer_id = c.customer_id\r\n",
+        "GROUP BY c.customer_state\r\n",
+        "ORDER BY ticket_medio DESC"
+      ],
+      "catalog": "olist_project",
+      "schema": "bronze"
+    },
+    {
+      "name": "f5397af8",
+      "displayName": "Untitled dataset",
+      "queryLines": [
+        "USE CATALOG `workspace`;\n",
+        "USE SCHEMA `default`;\n",
+        "\n",
+        "-- Gráfico 3 — Ticket médio por estado (barra)\n",
+        "SELECT\n",
+        "    c.customer_state,\n",
+        "    ROUND(SUM(f.price) / COUNT(DISTINCT f.order_id), 2) AS ticket_medio\n",
+        "FROM olist_project.gold.fact_orders f\n",
+        "JOIN olist_project.gold.dim_customer c ON f.customer_id = c.customer_id\n",
+        "GROUP BY c.customer_state\n",
+        "ORDER BY ticket_medio DESC"
+      ]
+    },
+    {
+      "name": "7ccc4abe",
+      "displayName": "Untitled dataset",
+      "queryLines": [
+        "USE CATALOG `workspace`;\n",
+        "USE SCHEMA `default`;\n",
+        "\n",
+        "SELECT\n",
+        "    c.customer_state,\n",
+        "    date_trunc('month', f.order_purchase_timestamp) AS mes,\n",
+        "    ROUND(SUM(f.price), 2) AS receita_total\n",
+        "FROM olist_project.gold.fact_orders f\n",
+        "JOIN olist_project.gold.dim_customer c ON f.customer_id = c.customer_id\n",
+        "GROUP BY c.customer_state, date_trunc('month', f.order_purchase_timestamp)\n",
+        "ORDER BY mes"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "f2671b56",
+      "displayName": "Vendas por estado e mês (linha ou barra)",
+      "layout": [
+        {
+          "widget": {
+            "name": "5ca2a7ab",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7ccc4abe",
+                  "fields": [
+                    {
+                      "name": "customer_state",
+                      "expression": "`customer_state`"
+                    },
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "sum(receita_total)",
+                      "expression": "SUM(`receita_total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Vendas por estado e mês",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "layout": "layer"
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "axis": {
+                    "title": "mês/estado/categoria"
+                  },
+                  "displayName": "mês/estado/categoria",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(receita_total)",
+                  "axis": {
+                    "title": "receita/ticket"
+                  },
+                  "displayName": "receita_total",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_state",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "d350fd83",
+      "displayName": "op categorias por receita (barra horizontal)",
+      "layout": [
+        {
+          "widget": {
+            "name": "704c212d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "57dfaf08",
+                  "fields": [
+                    {
+                      "name": "sum(receita_total)",
+                      "expression": "SUM(`receita_total`)"
+                    },
+                    {
+                      "name": "categoria",
+                      "expression": "`categoria`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Top categorias por receita",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#08306B",
+                  "#08519C",
+                  "#2171B5",
+                  "#4292C6",
+                  "#6BAED6",
+                  "#9ECAE1",
+                  "#C6DBEF",
+                  "#DEEBF7",
+                  "#EFF3FF",
+                  "#F7FBFF"
+                ],
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(receita_total)",
+                  "axis": {
+                    "title": "receita_total"
+                  },
+                  "displayName": "receita_total",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "categoria",
+                  "axis": {
+                    "title": "categoria"
+                  },
+                  "displayName": "categoria",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "89855021",
+      "displayName": "Gráfico 3 - Ticket médio por estado (barra)",
+      "layout": [
+        {
+          "widget": {
+            "name": "849090be",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f5397af8",
+                  "fields": [
+                    {
+                      "name": "sum(ticket_medio)",
+                      "expression": "SUM(`ticket_medio`)"
+                    },
+                    {
+                      "name": "customer_state",
+                      "expression": "`customer_state`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Ticket médio por estado",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#00441B",
+                  "#006D2C",
+                  "#238B45",
+                  "#41AB5D",
+                  "#74C476",
+                  "#A1D99B",
+                  "#C7E9C0",
+                  "#E5F5E0",
+                  "#F7FCF5",
+                  "#FFFFFF"
+                ],
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(ticket_medio)",
+                  "axis": {
+                    "title": "ticket_medio"
+                  },
+                  "displayName": "ticket_medio",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "customer_state",
+                  "axis": {
+                    "title": "customer_state"
+                  },
+                  "displayName": "customer_state",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "aadf18ba",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "visualizationColors": [
+        "#FEF0D9",
+        "#FDCC8A",
+        "#FC8D59",
+        "#E34A33",
+        "#B30000"
+      ],
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
