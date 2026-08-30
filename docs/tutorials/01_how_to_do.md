@@ -1084,6 +1084,112 @@ Isso fecha os critérios de aceite da #25 com folga:
 
 Escreva a PR e vamos para a Issue #26; Criar dashboard no Databricks SQL
 
-### Criar dashboard no Databricks SQL
+### SPRINT 5 - Criar dashboard no Databricks SQL
+
+Essa é a primeira issue puramente de interface do projeto, não tem noteboo. O Databricks SQL Dashboard é uma ferramenta visual: você escreve queries SQL, e ele desenha gráficos automaticamente a partir do resultado. 
+
+É o "produto final" que um analista de negócio ou stakeholder realmente enxergaria, depois de todo o trabalho de Bronze → Silver → Gold, esse é o momento em que os dados viram uma tela que alguém sem saber SQL consegue olhar e entender.
+
+**Passo a passo**
+1. Menu lateral → Dashboards (ou SQL → Dashboards, dependendo da versão da UI)
+2. Create Dashboard
+3. Nome: Olist Lakehouse - Visão de Vendas
+4. Adicione 2-3 gráficos, usando as próprias queries que já criamos na Sprint
+
+Gráfico 1 - Vendas por estado e mês (linha ou barra)
+```
+SELECT
+    c.customer_state,
+    date_trunc('month', f.order_purchase_timestamp) AS mes,
+    ROUND(SUM(f.price), 2) AS receita_total
+FROM olist_project.gold.fact_orders f
+JOIN olist_project.gold.dim_customer c ON f.customer_id = c.customer_id
+GROUP BY c.customer_state, date_trunc('month', f.order_purchase_timestamp)
+ORDER BY mes
+```
+5. Cole no SQL Editor, rode, e no resultado clique em "+ Add visualization" (ou ícone de gráfico) — escolha o tipo (Bar, Line) e os eixos (X = mês/estado/categoria, Y = receita/ticket). Depois adicione essa visualização ao Dashboard criado no passo 3.
+
+Depois de rodar a query, clique em "+ Add visualization"
+Tipo de gráfico: escolha Bar
+Procure a opção de orientação (geralmente um toggle ou dropdown) e marque Horizontal
+Eixos:
+X (valores): receita_total
+Y (categorias): categoria
+Ordenação: como sua query já tem ORDER BY receita_total DESC, o gráfico deve respeitar essa ordem — confirme que a maior categoria aparece no topo, não embaixo (às vezes a ferramenta inverte visualmente, dependendo de como ela lê a ordem dos dados)
+
+Gráfico 2 — Top categorias por receita (barra horizontal)
+```
+SELECT
+    p.product_category_name_english AS categoria,
+    ROUND(SUM(f.price), 2) AS receita_total
+FROM olist_project.gold.fact_orders f
+JOIN olist_project.gold.dim_product p ON f.product_id = p.product_id
+WHERE p.product_category_name_english IS NOT NULL
+GROUP BY p.product_category_name_english
+ORDER BY receita_total DESC
+LIMIT 10
+```
+Configuração:
+
+Visualization type: Bar
+Orientation: procure o toggle/dropdown e marque Horizontal
+X axis (valores): receita_total
+Y axis (categorias): categoria
+Sem "Group by" necessário (só uma série)
+
+6. Cole no SQL Editor, rode, e no resultado clique em "+ Add visualization" (ou ícone de gráfico)
+
+
+Gráfico 3 - Ticket médio por estado
+```
+SELECT
+    c.customer_state,
+    ROUND(SUM(f.price) / COUNT(DISTINCT f.order_id), 2) AS ticket_medio
+FROM olist_project.gold.fact_orders f
+JOIN olist_project.gold.dim_customer c ON f.customer_id = c.customer_id
+GROUP BY c.customer_state
+ORDER BY ticket_medio DESC
+```
+Configuração:
+
+Visualization type: Bar
+Orientation: Horizontal
+X axis: ticket_medio
+Y axis: customer_state
+
+**Publicando**
+1. Clique em Publish (canto superior direito, geralmente)
+2. Confirme as permissões de quem pode ver
+3. Print final
+
+Depois de publicado, tire o print da tela inteira do dashboard e salva como screenshots/dashboard_vendas.png.
+
+**Salve os dachboads em dashboards**
+
+Na frente do nome do Dashboar `Olist Lakehouse - Visão de Vendas`
+1. Clique nos 3 pontinhos
+2. Commit no git
+3. MOving to existing gitfolder
+4. Escoha sua gitfolder
+5. New folder `dashboards`
+6. Salve os dashboards
+
+Note que os dashboards são salvos com a extensão `.lvdash.json`
+esse é o formato nativo dos Lakeview Dashboards (o novo motor de dashboards do Databricks SQL),
+é literalmente a definição inteira do nosso dashboard: datasets (as queries), páginas, widgets, cores, posições de layout. Tudo em JSON estruturado.
+
+Assim, conseguimos versionar a definição completa do dashboard como código, não só um print estático.
+
+Agora, faça download dos graficos e salve em `screenshots/`para atender
+ao critério da Issue.
+
+Assim encerramos a primeira tarefa da SPRINT 5.
+
+Faça commit.
+Faça Pull Requests para a `devlop` e release pra `main`.
+As próximas tarefas são: Finalizar README.md completo, Revisão geral do repositório, Publicar no LinkedIn / portfólio.
+
+
+
 
 
