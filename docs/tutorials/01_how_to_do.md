@@ -1164,14 +1164,28 @@ Y axis: customer_state
 
 Depois de publicado, tire o print da tela inteira do dashboard e salva como screenshots/dashboard_vendas.png.
 
-**Salve os dachboads em dashboards**
+**Salve os dashboards em `dashboards`**
 
-Na frente do nome do Dashboar `Olist Lakehouse - Visão de Vendas`
+Na frente do nome do Dashboard `Olist Lakehouse - Visão de Vendas`:
+
 1. Clique nos 3 pontinhos
-2. Commit no git
-3. MOving to existing gitfolder
-4. Escoha sua gitfolder
+
+<img width="550" alt="Menu de opções do dashboard" src="https://github.com/user-attachments/assets/a60d145d-f0ca-440f-a399-7e064fc34e12" />
+
+2. Commit no Git
+3. Moving to existing Git folder
+
+<img width="550" alt="Opção de mover para Git folder existente" src="https://github.com/user-attachments/assets/ba3b7059-8bc9-425c-8c16-e0021e27f102" />
+
+4. Escolha sua Git folder
+
+<img width="550" alt="Seleção da Git folder" src="https://github.com/user-attachments/assets/bbd595a7-7494-4e75-88d5-079b715edea0" />
+
 5. New folder `dashboards`
+
+<img width="550" alt="Criação da pasta dashboards" src="https://github.com/user-attachments/assets/91cdc2ce-13ba-46bf-956a-18e2351c0938" />
+
+
 6. Salve os dashboards
 
 Note que os dashboards são salvos com a extensão `.lvdash.json`
