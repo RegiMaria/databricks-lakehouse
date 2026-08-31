@@ -1204,6 +1204,59 @@ Faça Pull Requests para a `devlop` e release pra `main`.
 As próximas tarefas são: Finalizar README.md completo, Revisão geral do repositório, Publicar no LinkedIn / portfólio.
 
 
+## SPRINT 6 - Documentar estudo sobre lakeflow declarative pipelines
+Comece criando uma nova branch: `docs/lakeflow-study-notes`
 
+O critério de aceite é só "notas de estudo registradas",
+bem aberto, então vale estruturar de um jeito que sirva 
+de referência prática pra quando você for implementar a #31 de verdade,
+não só um resumo solto.
 
+**Sugestão de estrutura pro arquivo de notas**
+
+Crie `docs/tutorials/lakeflow_study_notes.md` com essa organização:
+
+```text
+# Notas de estudo - Lakeflow Declarative Pipelines
+
+## 1. O que é
+[resumo do conceito, em suas palavras, depois de ler a doc oficial]
+
+## 2. Sintaxe: imperativo (o que já fizemos) vs declarativo
+
+| Imperativo (nosso projeto) | Declarativo (Lakeflow) |
+|---|---|
+| `spark.table(...)` + `.write.saveAsTable(...)` | `@dp.materialized_view()` |
+| Você controla a ordem de execução manualmente | O framework infere o grafo de dependências |
+| `dropDuplicates()` + `.filter()` | Pode usar `@dp.expect_or_drop(...)` para qualidade |
+
+## 3. Trechos de sintaxe que vou usar na issue #31
+[cole aqui os exemplos de código da doc oficial que serão a base do próximo pipeline]
+
+## 4. Dúvidas / pontos de atenção antes de implementar
+[qualquer coisa que ficou confusa lendo a doc, pra resolver antes de codar]
+
+## 5. Link da documentação oficial consultada
+- [link 1]
+- [link 2]
+```
+
+Assim, quando você for escrever o pipeline declarativo de verdade, já vai ter os 
+trechos de sintaxe e as dúvidas resolvidas num lugar só, em vez de precisar voltar 
+pra documentação do zero.
+
+**Onde ler a documentação oficial**
+
+Já linkamos isso lá na conversa sobre Delta Live Tables / Lakeflow, mas repassando os principais:
+[Tutorial: Build an ETL pipeline with Lakeflow pipelines](https://docs.databricks.com/aws/en/getting-started/data-pipeline-get-started)
+
+[Develop pipeline code with Python](https://docs.databricks.com/aws/en/ldp/developer/python-dev)
+
+Onde salvar
+`docs/tutorials/lakeflow_study_notes.md`
+
+Isso fecha o critério de aceite da #30 ("notas de estudo registradas")
+
+Faça o commit:
+`docs: registra notas de estudo sobre lakeflow declarative pipelines`
 
