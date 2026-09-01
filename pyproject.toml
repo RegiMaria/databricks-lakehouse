@@ -5,6 +5,7 @@ exclude = [".git", "__pycache__", "data", "screenshots"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+builtins = ["spark", "dbutils"]
 
 [tool.ruff.lint.per-file-ignores]
 "notebooks/*.py" = ["E402"]
