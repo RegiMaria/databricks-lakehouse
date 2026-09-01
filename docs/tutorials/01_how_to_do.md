@@ -1205,6 +1205,7 @@ As próximas tarefas são: Finalizar README.md completo, Revisão geral do repos
 
 
 ## SPRINT 6 - Documentar estudo sobre lakeflow declarative pipelines
+
 Comece criando uma nova branch: `docs/lakeflow-study-notes`
 
 O critério de aceite é só "notas de estudo registradas",
@@ -1260,3 +1261,119 @@ Isso fecha o critério de aceite da #30 ("notas de estudo registradas")
 Faça o commit:
 `docs: registra notas de estudo sobre lakeflow declarative pipelines`
 
+## Criar pipeline declarativo recriando orders_silver
+Cria uma nova branch:
+`feature/lakeflow-orders-silver`
+
+**Implemente o pipeline declarativo**
+Diferença importante antes de começar
+
+Isso não é um notebook comum que você roda com "Run All", é um tipo de objeto diferente
+no Databricks: um Pipeline (Lakeflow Declarative Pipelines). Precisa ser criado como 
+tal na interface, não só como arquivo .py solto.
+
+Passo a passo
+1. Criar o arquivo de código em `notebooks/notebooks_ldp_pipeline/orders_silver_declarative`
+
+```python
+from pyspark import pipelines as dp
+from pyspark.sql.functions import col
+
+
+@dp.materialized_view()
+def orders_silver_declarative():
+    return (
+        spark.read.table("olist_project.bronze.orders")
+        .dropDuplicates(["order_id"])
+        .filter(col("order_id").isNotNull())
+        .filter(col("customer_id").isNotNull())
+    )
+
+```
+Por que orders_silver_declarative, não orders_silver: pra não colidir com a tabela
+que já existe do pipeline imperativo (olist_project.silver.orders). O objetivo aqui
+é comparar as duas abordagens lado a lado, não substituir a que já está em produção ,então elas precisam ter nomes/destinos diferentes.
+
+Por que lemos de `olist_project.bronze.orders` direto: como esse pipeline é isolado
+(não parte de um Bronze declarativo que criamos), lemos da Bronze real do projeto,
+é o ponto de partida comum entre as duas abordagens.
+
+2. Criar o Pipeline na UI
+
+- Menu lateral → Jobs & Pipelines → Create → ETL Pipeline 
+- Nome: `orders_silver_ldp_demo`
+- Aponte o source code pra pasta `notebooks/notebooks_ldp_pipeline/`
+- Configure o destination catalog/schema: `olist_project` / `gold_ldp_demo` 
+(ou outro schema separado, pra não misturar com silver/gold reais), se preferir,
+pode usar até um schema novo tipo olist_project.ldp_demo.
+Sim, nesa etapa crie um schema novo `gold_ldp_demo`.
+
+3. Rodar o Pipeline
+
+Clique em Start (ou "Run"). Diferente de notebook, você vai ver um grafo visual 
+sendo desenhado automaticamente, mostrando orders_silver_declarative como um nó.
+
+**Default location for data assets**
+Repare que ela estará apontando pra workspace / default , se você deixar assim, a tabela `orders_silver_declarative` vai ser criada no catalog workspace, schema default,
+misturada com qualquer outra coisa que exista ali. Como o objetivo é comparar com o 
+pipeline imperativo (que vive todo dentro de olist_project), faz mais sentido direcionar pro mesmo catalog do projeto, só num schema separado pra não colidir com silver/gold reais.
+
+Na tela que você está vendo:
+
+Clique no campo Default catalog (que mostra workspace) e troque pra olist_project
+Clique no campo Default schema (que mostra default), se ldp_demo já existir como opção,
+selecione; se não existir na lista, você provavelmente pode digitar o nome novo direto 
+no campo (alguns campos desse tipo permitem criar on-the-fly) — digite `ldp_demo`.
+
+Por que "Job" e "Pipeline - ETL" são tipos diferentes na listagem
+São dois objetos diferentes do Databricks, com propósitos diferentes:
+
+| Aspecto                      | **Job** (`olist_lakehouse_pipeline`)                      | **Pipeline ETL** (`orders_silver_ldp_demo`)                                                                          |
+| ---------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Paradigma**                | Imperativo — você define as *tasks* e a ordem manualmente | Declarativo — você define o *resultado*, e o framework infere a ordem                                                |
+| **O que executa**            | Notebooks comuns, um por *task*, célula por célula        | Definições de tabela (`@dp.materialized_view`), processadas pelo motor Lakeflow                                      |
+| **Como você vê o progresso** | Timeline de *tasks* (Bronze → Silver → Gold)              | Grafo de tabelas/dependências                                                                                        |
+| **Métricas mostradas**       | Duração por *task*, linhas lidas/escritas                 | Duração por tabela, **Incrementalization** (*full recompute* vs. *incremental*), **Expectations** (*quality checks*) |
+
+O Job é o mecanismo de orquestração pra pipelines imperativos (o que construímos do 
+ero até a Sprint 4). O Pipeline (ETL) é um tipo de objeto nativo do Lakeflow,
+ele já é declarativo por natureza, não precisa de um Job por cima orquestrando ele.
+
+Um detalhe interessante que apareceu na tela do Pipeline: "Incrementalization: Full recompute"
+
+Isso é uma métrica própria do Lakeflow que não existe no mundo imperativo,
+ele está te dizendo que, nessa execução, ele processou a tabela inteira do zero (não incrementalmente). Isso é esperado na primeira execução; se você rodasse de novo sem mudar a fonte,
+o framework poderia otimizar e processar só o que mudou (dependendo de como a fonte é lida),
+é um comportamento que vale mencionar na comparação da #33.
+
+
+Depois que o #31 rodar com sucesso
+
+Vamos comparar as duas abordagens em 3 dimensões, como a issue pede:
+
+| Critério | Imperativo (`02_silver_transform.py`) | Declarativo (Lakeflow) |
+|---|---|---|
+| **Tempo de execução** | *(anotar o tempo real do seu Job, Sprint 4)* | *(anotar o tempo do Pipeline run)* |
+| **Legibilidade do código** | Mais linhas, você vê cada passo explicitamente (leitura → transformação → escrita) | Menos código, mas exige entender o decorator/paradigma primeiro |
+| **Facilidade de monitoramento** | Print manual de contagem; você precisa rodar query de validação à parte | Grafo visual nativo na UI, métricas de linhas processadas embutidas |
+
+
+Salve suas anotações em:
+`docs/tutorials/imperative_vs_declarative.md`
+
+Só recapitulando o que falta na Sprint 6 pra gente não perder o fio da meada:
+
+✅ #30 Estudar Lakeflow
+✅ #31 Pipeline declarativo
+⬜ #32 Adicionar quality expectations
+✅ #33 Comparar (documento pronto, falta só commitar/PR)
+⬜ #34 Seção no README (fica pra depois, como combinado)
+
+Commit, escreva a PR e vamos para **Adicionar quality expectations**
+
+# Adicionar quality expectations
+Cria uma nova Branch: `feature/lakeflow-quality-expectations`
+
+O que vamos fazer
+
+Adicionar @dp.expect_or_drop() no pipeline declarativo que você já criou (orders_silver_declarative), aplicando as mesmas regras de qualidade que já usamos no mundo imperativo, mas agora de um jeito declarativo, com métricas nativas.
