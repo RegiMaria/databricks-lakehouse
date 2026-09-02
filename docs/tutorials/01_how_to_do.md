@@ -1374,6 +1374,71 @@ Commit, escreva a PR e vamos para **Adicionar quality expectations**
 # Adicionar quality expectations
 Cria uma nova Branch: `feature/lakeflow-quality-expectations`
 
-O que vamos fazer
+**O que vamos fazer**
 
-Adicionar @dp.expect_or_drop() no pipeline declarativo que você já criou (orders_silver_declarative), aplicando as mesmas regras de qualidade que já usamos no mundo imperativo, mas agora de um jeito declarativo, com métricas nativas.
+Adicionar `@dp.expect_or_drop()` no pipeline declarativo que nós já criamos (orders_silver_declarative), aplicando as mesmas regras de qualidade que já usamos no mundo imperativo, mas agora de um jeito declarativo, com métricas nativas.
+
+A primeira célula deverá ser comentada,pois o pipeline executa o notebook inteiro, célula por célula - e como as duas células tentam registrar uma tabela com o mesmo nome (orders_silver_declarative), ele pode reclamar: "não posso redefinir esse dataset, ele já foi definido antes nesse mesmo arquivo".
+
+**No paradigma declartivo**
+
+Isso é diferente de notebook comum (onde rodar a célula 2 simplesmente "sobrescreve" a função da célula 1 na memória) - no paradigma declarativo, cada célula com @dp.materialized_view() é uma declaração permanente, não uma atribuição de variável que pode ser substituída.
+
+Outro ponto de atenção:
+
+`spark` é uma variável injetada automaticamente pelo ambiente de execução do Databricks, ela existe magicamente % dentro de notebooks e pipelines rodando lá, mas não existe num contexto Python genérico (como o GitHub Actions, que só tem Python puro instalado, sem Databricks). O `Ruff`, rodando fora do Databricks, não tem como saber disso, ele vê spark como uma variável desconhecida.
+
+Não dá pra "definir" spark de verdade (ele só existe em runtime do Databricks), mas dá pra avisar o Ruff pra ignorar esse nome específico, porque sabemos que é uma variável de ambiente legítima.
+Isso é feito acrescentando alguma slinhas ao `pyproject.toml`.
+
+Após rodar o código com a quality expectations`
+
+```python
+@dp.materialized_view()
+@dp.expect_or_drop("valid_order_id", "order_id IS NOT NULL")
+@dp.expect_or_drop("valid_customer_id", "customer_id IS NOT NULL")
+def orders_silver_declarative():
+    return (
+        spark.read.table("olist_project.bronze.orders")
+        .dropDuplicates(["order_id"])
+    )
+```
+Verifique a tela do pipeline:
+O que os números mostram em: 
+Written: xxxxxxx
+Dropped: xxxxxxxx
+
+Isso mostra quantas linhas violaram  as regras `valid_order_i`d (order_id IS NOT NULL) ou  `valid_customer_id` (customer_id IS NOT NULL).
+
+Antes de continuar:
+O que é um decorador @?
+decorator (decorador, em português). É um recurso da própria linguagem Python, não é exclusivo do Databricks/Lakeflow. Um decorator é uma forma de "envolver" uma função com comportamento extra, sem precisar reescrever a função em si.
+
+Como ler a sintaxe, de baixo pra cima
+
+```python
+
+@dp.materialized_view()
+@dp.expect_or_drop("valid_order_id", "order_id IS NOT NULL")
+@dp.expect_or_drop("valid_customer_id", "customer_id IS NOT NULL")
+def orders_silver_declarative():
+    return (
+        spark.read.table("olist_project.bronze.orders")
+        .dropDuplicates(["order_id"])
+    )
+
+````
+Pense em decorators como camadas envolvendo a função, aplicadas de baixo pra cima (o mais próximo do def é aplicado primeiro):
+
+`def orders_silver_declarative()` - a função em si: o que fazer (ler bronze.orders, remover duplicatas)
+`@dp.expect_or_drop("valid_customer_id", ...)` — a camada mais interna: "antes de aceitar o resultado dessa função como válido, verifique que customer_id não é nulo"
+`@dp.expect_or_drop("valid_order_id", ...)` — outra camada: mesma lógica, pra order_id
+`@dp.materialized_view() ` - a camada mais externa: "registre o resultado disso tudo como uma tabela materializada gerenciada pelo pipeline"
+
+Cada `@algumacoisa` não executa nada sozinho,— ele modifica o comportamento da função que vem logo abaixo dele.
+
+Múltiplos decorators podem ser empilhados sobre a mesma função — são aplicados de baixo para cima: primeiro as expectations avaliam a qualidade, depois `@dp.materialized_view()` registra o resultado final
+como tabela.
+
+
+
