@@ -1391,6 +1391,8 @@ Outro ponto de atenção:
 Não dá pra "definir" spark de verdade (ele só existe em runtime do Databricks), mas dá pra avisar o Ruff pra ignorar esse nome específico, porque sabemos que é uma variável de ambiente legítima.
 Isso é feito acrescentando alguma slinhas ao `pyproject.toml`.
 
+Erro que [recebemos aqui](https://github.com/RegiMaria/databricks-lakehouse/commit/cee179219e7ba5d32535816407b5997eb21a20b5)
+
 Após rodar o código com a quality expectations`
 
 ```python
@@ -1441,4 +1443,107 @@ Múltiplos decorators podem ser empilhados sobre a mesma função — são aplic
 como tabela.
 
 
+## 
+1. `pyproject.toml`
+```
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [".git", "__pycache__", "data", "screenshots"]
 
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+builtins = ["spark", "dbutils"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E402"]
+```
+2. `requirements-dev.txt`
+
+```
+ruff==0.16.0
+```
+
+3. `.github/workflows/lint.yml`
+
+```
+name: Lint (Ruff)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Rodar Ruff (lint)
+        run: ruff check notebooks/
+
+      - name: Rodar Ruff (formatação)
+        run: ruff format --check notebooks/
+    
+```
+Sobre a #38 - Podemos já ter a evidência sem precisar simular nada
+
+Como nós já passou por um ciclo real de "PR falhou no CI → corrigiu → passou" (o caso do spark/F821), isso já cumpre o critério de aceite literal: "link do PR que falhou" + "link do PR que corrigiu". Não precisa simular um erro proposital , você já tem um caso real e mais valioso pro portfólio (mostra troubleshooting genuíno, não um teste artificial).
+
+| Issue | Status                            | Real                                                                                                                                                                                                                |
+| ----- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#35` | requirements-dev.txt              | ✅ Já existe, só falta fechar a issue                                                                                                                                                                                |
+| `#36` | pyproject.toml                    | ✅ Já existe (assumindo que a duplicação é só visual aqui no chat)                                                                                                                                                   |
+| `#37` | workflow lint.yml                 | ✅ Já existe e já rodou com sucesso                                                                                                                                                                                  |
+| `#38` | testar Action com erro proposital | ⬜ Ainda não fizemos isso de propósito- mas o erro do `F821` (`spark` undefined) que tivemos recentemente **já serve como evidência real**! Foi um erro genuíno, o Action falhou, você corrigiu, e passou de novo |
+| `#39` | badge no README                   | ⬜ Ainda não adicionamos o badge de verdade no README                                                                                                                                                                |
+## Evidência: CI falhando e sendo corrigido
+
+**PR que falhou**: #XX 
+
+job na branch `main`, disparado após merge do
+pipeline declarativo com quality expectations. Erro do Ruff:
+```
+F821 Undefined name spark
+--> notebooks/notebooks_ldp_pipeline/orders_silver_declarative.ipynb
+```
+- o pipeline declarativo (`orders_silver_declarative`)
+usava a variável `spark`, injetada automaticamente pelo runtime do Databricks,
+mas inexistente do ponto de vista do Ruff rodando no GitHub Actions.
+Erro: `F821 Undefined name 'spark'`.
+
+
+Causa: `spark` é uma variável injetada automaticamente pelo runtime do
+Databricks — existe em notebooks/pipelines rodando lá, mas não existe
+num contexto Python genérico como o GitHub Actions, que só tem Python
+puro instalado. O Ruff, rodando fora do Databricks, não tinha como saber
+disso e reportou como nome indefinido.
+
+**PR #92** - correção pontual com `# noqa: F821` na linha específica
+(comentário inline, com apoio do GitHub Copilot).
+
+**PR #93** - correção definitiva e centralizada: adicionado
+`builtins = ["spark", "dbutils"]` em `[tool.ruff.lint]` no
+`pyproject.toml`, declarando essas variáveis como parte do namespace
+conhecido do Ruff para todo o projeto — resolve o problema de forma
+permanente, sem precisar de `# noqa` espalhado pelo código toda vez
+que `spark`/`dbutils` forem usados em notebooks futuros.
+
+CI passou com sucesso após o PR #93.
+
+
+**PR que corrigiu**: #93 - adicionado `builtins = ["spark", "dbutils"]`
+em `[tool.ruff.lint]` no `pyproject.toml`, declarando essas variáveis
+como parte do namespace conhecido do Ruff. CI passou após a correção.
