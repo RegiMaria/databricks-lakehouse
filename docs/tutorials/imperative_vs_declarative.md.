@@ -1,0 +1,74 @@
+# Comparação: Pipeline Imperativo vs. Declarativo
+
+Comparação entre a abordagem imperativa (usada no projeto principal,
+`02_silver_transform.py` + Job `olist_lakehouse_pipeline`) e a abordagem
+declarativa (Lakeflow Declarative Pipelines, `orders_silver_ldp_demo`),
+ambas processando a mesma lógica de limpeza da tabela `orders`.
+
+## ⚠️ Nota sobre a comparação de escopo
+
+Esta comparação não é perfeitamente equivalente em volume de trabalho: o
+pipeline imperativo (`silver_transform`) processa as 6 tabelas Silver do
+projeto numa única execução (orders, customers, products, sellers,
+order_items, order_payments), enquanto o pipeline declarativo processa
+apenas `orders`. Os tempos abaixo refletem essa diferença de escopo e
+não devem ser lidos como "declarativo é X vezes mais rápido" — a
+comparação de tempo mais justa seria isolar quanto tempo, dentro dos
+1m 7s da task `silver_transform`, é gasto especificamente com `orders`.
+
+## Tabela comparativa
+
+| Critério | Imperativo | Declarativo |
+|---|---|---|
+| **Tempo de execução** | 1m 7s (task `silver_transform`, 6 tabelas) | 5s (1 tabela, `orders_silver_declarative`) |
+| **Linhas processadas** | 99.446 (orders) + 5 outras tabelas | 99.446 (orders) |
+| **Linhas de código** | ~15 linhas por tabela (leitura, dedup, filtro, escrita, print) | ~8 linhas (função decorada, sem escrita/print explícitos) |
+| **Controle de execução** | Manual — você decide ordem, escreve `.write.saveAsTable()` explicitamente | Automático — framework infere dependências a partir de `spark.read.table()` |
+| **Qualidade de dados** | `.filter()` manual, sem métrica exposta | `@dp.expect_or_drop()` (issue #32), com métricas nativas de linhas descartadas |
+| **Monitoramento** | Prints manuais + queries de validação à parte (`02_silver_quality_check.py`) | Painel nativo do Pipeline: duração, output records, expectations, incrementalization — tudo na mesma tela |
+| **Tipo de objeto no Databricks** | Job (orquestra notebooks comuns) | Pipeline - ETL (objeto nativo do Lakeflow) |
+| **Reprocessamento** | Sempre `overwrite` completo (a menos que você implemente lógica de MERGE manualmente) | Suporta incremental nativamente; essa execução foi "Full recompute" por ser a primeira |
+| **Curva de aprendizado** | Mais familiar (PySpark padrão, o que a maioria já conhece) | Exige aprender o decorator/paradigma novo (`@dp.materialized_view`) |
+
+## Análise
+
+### Legibilidade do código
+
+O código declarativo é mais **enxuto**, mas não necessariamente mais
+**legível** para quem não conhece o paradigma — você precisa entender o
+que `@dp.materialized_view()` faz "por baixo dos panos" (streaming,
+grafo de dependências, incrementalização) para interpretar corretamente
+o que a função vai produzir. Já o código imperativo é mais verboso, mas
+cada linha é explícita: você lê de cima a baixo e sabe exatamente o que
+acontece, sem precisar conhecer nenhum framework além do PySpark padrão.
+
+Para fins de aprendizado (o objetivo deste projeto), a abordagem
+imperativa foi mais valiosa — obriga a entender cada etapa (leitura,
+dedup, filtro, escrita) individualmente.
+
+### Facilidade de monitoramento
+
+Aqui o declarativo ganha claramente: a tela do Pipeline mostra, sem
+nenhum código adicional, duração, registros de saída, expectations
+(quando configuradas) e se o processamento foi incremental ou completo.
+No pipeline imperativo, toda essa visibilidade (contagem de linhas,
+validação de duplicata) precisou ser **escrita manualmente** como
+células de validação separadas (`02_silver_quality_check.py`).
+
+### Quando cada abordagem faz mais sentido
+
+- **Imperativo**: melhor para aprender os fundamentos, para pipelines
+  pequenos/médios onde controle explícito importa, ou quando a equipe já
+  domina PySpark tradicional
+- **Declarativo**: melhor para pipelines maiores com muitas tabelas
+  interdependentes, onde a inferência automática de dependências economiza
+  tempo de manutenção, e onde qualidade de dados embutida
+  (`@dp.expect_or_drop`) é uma prioridade desde o início
+
+## Conclusão
+
+Para este projeto de portfólio, a abordagem imperativa foi a escolha
+correta como base — o objetivo era aprender os fundamentos de PySpark,
+Delta Lake e orquestração manual. A implementação declarativa (Sprint 6,
+bônus) serviu para demonstrar conhecimento do paradigma mais atual do
+Databricks, sem substituir o pipeline principal.
